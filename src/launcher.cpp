@@ -202,7 +202,7 @@ public:
 
                 auto box = make_shared<LauncherItem>(num++, name, description, image, cmd);
                 add(box);
-                box->move_to_center(Point(m_boxes.size() * ITEM_SPACE, h() / 2));
+                box->move_to_center(Point(m_boxes.size() * ITEM_SPACE, height() / 2));
 
 #ifdef DO_SCALING
                 // pre-seed the image cache
@@ -210,7 +210,7 @@ public:
                     box->scale_box(s);
 #endif
 
-                box->scale_box(m_boxes.size() * ITEM_SPACE - box->w() / 2);
+                box->scale_box(m_boxes.size() * ITEM_SPACE - box->width() / 2);
 
                 m_boxes.push_back(box);
             }
@@ -269,7 +269,7 @@ public:
             if (visible)
             {
                 box->move_to_center(Point(pos, box->center().y));
-                box->scale_box(pos - box->w() / 2);
+                box->scale_box(pos - box->width() / 2);
             }
             else
             {
@@ -283,7 +283,7 @@ public:
         m_animation.stop();
 
         auto center = box().center();
-        auto distance = w();
+        auto distance = width();
 
         for (auto& box : m_boxes)
         {
@@ -295,9 +295,9 @@ public:
             }
         }
 
-        m_animation.starting(0);
-        m_animation.ending(distance);
-        m_animation.duration(std::chrono::milliseconds(static_cast<uint32_t>(std::abs(distance))));
+        m_animation.set_starting(0);
+        m_animation.set_ending(distance);
+        m_animation.set_duration(std::chrono::milliseconds(static_cast<uint32_t>(std::abs(distance))));
         m_animation.start();
 
         m_moving_x = 0;
