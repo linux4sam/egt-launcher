@@ -23,5 +23,7 @@ PKG_CHECK_MODULES(LIBEGT, [libegt], [], [
    AC_MSG_ERROR(libegt not found.  This is required.)
 ])
 
+AC_CHECK_HEADERS([egt/detail/screen/kmsscreen.h])
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

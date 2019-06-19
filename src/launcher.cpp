@@ -11,7 +11,9 @@
 #include <cmath>
 #include <cstdio>
 #include <egt/detail/filesystem.h>
+#ifdef HAVE_EGT_DETAIL_SCREEN_KMSSCREEN_H
 #include <egt/detail/screen/kmsscreen.h>
+#endif
 #include <egt/ui>
 #include <iostream>
 #include <memory>
@@ -100,7 +102,7 @@ public:
         {
             Application::instance().event().quit();
 
-#ifdef HAVE_LIBPLANES
+#ifdef HAVE_EGT_DETAIL_SCREEN_KMSSCREEN_H
             // TODO: explicitly close KMS
             if (detail::KMSScreen::instance())
                 detail::KMSScreen::instance()->close();
