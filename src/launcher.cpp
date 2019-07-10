@@ -234,8 +234,8 @@ public:
             if (!m_moving)
             {
                 m_moving = true;
-                m_moving_x = event.pointer().point.x;
-                m_offset = m_boxes[0]->center().x;
+                m_moving_x = event.pointer().point.x();
+                m_offset = m_boxes[0]->center().x();
             }
             break;
         case eventid::raw_pointer_up:
@@ -245,7 +245,7 @@ public:
         case eventid::raw_pointer_move:
             if (m_moving)
             {
-                move_boxes(event.pointer().point.x);
+                move_boxes(event.pointer().point.x());
                 event.stop();
             }
             break;
@@ -263,17 +263,17 @@ public:
             auto pos = m_offset + (box->num() * ITEM_SPACE) + diff;
 
             Rect to(box->box());
-            to.x = pos;
+            to.set_x(pos);
 
             bool visible = Rect::intersect(Rect::merge(to, box->box()), this->box());
             if (visible)
             {
-                box->move_to_center(Point(pos, box->center().y));
+                box->move_to_center(Point(pos, box->center().y()));
                 box->scale_box(pos - box->width() / 2);
             }
             else
             {
-                box->move_to_center(Point(pos, box->center().y));
+                box->move_to_center(Point(pos, box->center().y()));
             }
         }
     }
@@ -287,10 +287,10 @@ public:
 
         for (auto& box : m_boxes)
         {
-            if (center.distance_to<int>(box->box().center()) < std::abs(distance))
+            if (center.distance_to(box->box().center()) < std::abs(distance))
             {
-                distance = center.distance_to<int>(box->box().center());
-                if (center.x < box->box().center().x)
+                distance = center.distance_to(box->box().center());
+                if (center.x() < box->box().center().x())
                     distance *= -1;
             }
         }
@@ -301,7 +301,7 @@ public:
         m_animation.start();
 
         m_moving_x = 0;
-        m_offset = m_boxes[0]->center().x;
+        m_offset = m_boxes[0]->center().x();
     }
 
 private:
