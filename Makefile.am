@@ -7,14 +7,15 @@ CUSTOM_CXXFLAGS = $(WARN_CFLAGS) \
 
 CUSTOM_LDADD = $(LIBEGT_LIBS)
 
-bin_PROGRAMS = launcher
+AM_CXXFLAGS = -DDATADIR=\"$(datadir)\"
 
-launcher_SOURCES = src/launcher.cpp
-launcher_CXXFLAGS = $(CUSTOM_CXXFLAGS) $(AM_CXXFLAGS)
-launcher_LDADD = $(LIBEGT_LIBS) $(CUSTOM_LDADD)
-launcherdir = $(prefix)/share/egt/samples/launcher
-dist_launcher_DATA = $(wildcard $(top_srcdir)/images/*.png) \
-	$(top_srcdir)/menu.xml \
+bin_PROGRAMS = egt-launcher
+
+egt_launcher_SOURCES = src/launcher.cpp
+egt_launcher_CXXFLAGS = $(CUSTOM_CXXFLAGS) $(AM_CXXFLAGS)
+egt_launcher_LDADD = $(CUSTOM_LDADD)
+egt_launcherdir = $(prefix)/share/egt/launcher
+dist_egt_launcher_DATA = $(wildcard $(top_srcdir)/images/*.png) \
 	$(top_srcdir)/images/background.jpg
-launcher_LDFLAGS = $(AM_LDFLAGS)
-launcher_SCRIPTS = launch.sh
+egt_launcher_LDFLAGS = $(AM_LDFLAGS)
+egt_launcher_SCRIPTS = launch.sh

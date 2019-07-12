@@ -33,4 +33,4 @@ stamp-h1
 *.lo
 *.gcno
 *.gcda
-launcher
+egt-launcher
