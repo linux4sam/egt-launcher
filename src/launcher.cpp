@@ -8,27 +8,26 @@
 #endif
 
 #include <array>
-#include <cmath>
-#include <cstdio>
 #include <egt/detail/filesystem.h>
+#include <egt/detail/imagecache.h>
+#include <egt/ui>
+#include <experimental/filesystem>
+#include <iostream>
+#include <memory>
+#include <rapidxml.hpp>
+#include <rapidxml_utils.hpp>
+#include <regex>
+#include <string>
+#include <vector>
+
 #ifdef HAVE_EGT_DETAIL_SCREEN_KMSSCREEN_H
 #include <egt/detail/screen/kmsscreen.h>
 #endif
-#include <egt/ui>
-#include <iostream>
-#include <memory>
-#include <random>
-#include <rapidxml.hpp>
-#include <rapidxml_print.hpp>
-#include <rapidxml_utils.hpp>
-#include <stdexcept>
-#include <string>
-#include <vector>
 
 using namespace std;
 using namespace egt;
 
-//#define DO_SCALING
+namespace filesys = std::experimental::filesystem;
 
 #ifdef DO_SCALING
 /**
@@ -70,24 +69,26 @@ static std::string exec(const char* cmd, bool wait = false)
 
 #define ITEM_SPACE 250
 
+static int itemnum = 0;
+
 /*
  * A launcher menu item.
  */
 class LauncherItem : public ImageLabel
 {
 public:
-    LauncherItem(int num, const string& name, const string& description,
+    LauncherItem(const string& name, const string& description,
                  const string& image, const string& exec, int x = 0, int y = 0)
         : ImageLabel(Image(image),
                      name,
                      Rect(Point(x, y), Size()),
                      alignmask::center),
-          m_num(num),
+          m_num(itemnum++),
           m_name(name),
           m_description(description),
           m_exec(exec)
     {
-        set_color(Palette::ColorId::text, Palette::white);
+        set_color(Palette::ColorId::label_text, Palette::white);
         set_image_align(alignmask::center | alignmask::top);
         set_text_align(alignmask::center | alignmask::bottom);
     }
@@ -108,7 +109,7 @@ public:
                 detail::KMSScreen::instance()->close();
 #endif
 
-            string cmd = "../share/egt/examples/launcher/launch.sh " + m_exec + " &";
+            string cmd = DATADIR "/egt/launcher/launch.sh " + m_exec + " &";
             exec(cmd.c_str());
 
             event.stop();
@@ -148,42 +149,104 @@ class LauncherWindow : public TopWindow
 {
 public:
     LauncherWindow()
-        : m_popup(main_screen()->size() / 2),
-          m_animation(0, 0, std::chrono::milliseconds(200),
+        : m_animation(0, 0, std::chrono::milliseconds(200),
                       easing_quintic_easein)
     {
         m_animation.on_change(std::bind(&LauncherWindow::move_boxes, this,
                                         std::placeholders::_1));
 
-        auto hello = make_shared<Button>("Hello World");
-        hello->set_align(alignmask::center);
-        m_popup.add(hello);
-
         add(make_shared<ImageLabel>(Image("background.png")));
 
         auto logo = std::make_shared<ImageLabel>(Image("@128px/microchip_logo_white.png"));
-        logo->set_align(alignmask::left | alignmask::top);
+        logo->set_align(alignmask::center | alignmask::bottom);
         logo->set_margin(10);
         add(logo);
 
-        auto settings = std::make_shared<ImageButton>(Image("settings.png"), "", Rect());
-        settings->flags().clear(Widget::flag::grab_mouse);
-        add(settings);
-        settings->set_boxtype(Theme::boxtype::none);
-        settings->set_align(alignmask::right | alignmask::top);
-        settings->set_margin(10);
-        settings->on_event([this](Event&)
-        {
-            if (m_popup.visible())
-                m_popup.hide();
-            else
-                m_popup.show_centered();
-        }, {eventid::pointer_click});
+        auto egt_logo = std::make_shared<ImageLabel>(Image("@128px/egt_logo_white.png"));
+        egt_logo->set_align(alignmask::center | alignmask::top);
+        egt_logo->set_margin(10);
+        add(egt_logo);
     }
 
-    virtual int load(const std::string& expr)
+    std::vector<std::string> get_files(const std::string &dir)
     {
-        std::vector<std::string> files = detail::glob(expr);
+        std::vector<std::string> files;
+
+        try
+        {
+            if (filesys::exists(dir) && filesys::is_directory(dir))
+            {
+                filesys::recursive_directory_iterator iter(dir);
+                filesys::recursive_directory_iterator end;
+
+                while (iter != end)
+                {
+                    if (!filesys::is_directory(iter->path().string()))
+                    {
+                        std::regex rx(".*\\.xml$");
+                        if (std::regex_match(iter->path().string(), rx))
+                            files.push_back(iter->path().string());
+                    }
+
+                    error_code ec;
+                    iter.increment(ec);
+                    if (ec)
+                        std::cerr << "Error While Accessing : " << iter->path().string() << " :: " << ec.message() << '\n';
+                }
+            }
+        }
+        catch (std::system_error & e)
+        {
+            std::cerr << "Exception :: " << e.what();
+        }
+        return files;
+    }
+
+    virtual void load_entry(rapidxml::xml_node<>* node)
+    {
+        if (!node->first_node("title"))
+            return;
+
+        string name = node->first_node("title")->value();
+
+        string description;
+
+        if (node->first_node("description"))
+            description = node->first_node("description")->value();
+
+        string image;
+        auto link = node->first_node("link");
+        if (link)
+        {
+            auto href = link->first_attribute("href");
+            if (href)
+                image = href->value();
+        }
+
+        if (!node->first_node("arg"))
+            return;
+
+        string cmd = node->first_node("arg")->value();
+
+        auto box = make_shared<LauncherItem>(name, description, image, cmd);
+        add(box);
+        box->resize(Size(box->width(), height() / 2));
+        box->move_to_center(Point(m_boxes.size() * ITEM_SPACE, height() / 2));
+
+#ifdef DO_SCALING
+        // pre-seed the image cache
+        for (auto s = 0.5; s <= 2.0; s += 0.01)
+            box->scale_box(s);
+#endif
+
+        box->scale_box(m_boxes.size() * ITEM_SPACE - box->width() / 2);
+
+        m_boxes.push_back(box);
+    }
+
+    virtual int load(const std::string& dir)
+    {
+        std::vector<std::string> files = get_files(dir);
 
         for (auto& file : files)
         {
@@ -191,35 +254,29 @@ public:
             rapidxml::xml_document<> doc;
             doc.parse<0>(xml_file.data());
 
-            auto num = 0;
-            auto root_node = doc.first_node("menu");
-            for (auto node = root_node->first_node("item"); node; node = node->next_sibling())
+            auto feed = doc.first_node("feed");
+            if (feed)
             {
-                string name = node->first_attribute("name")->value();
-                string description = node->first_node("description")->value();
-                string image = node->first_node("image")->value();
-                string cmd = node->first_node("exec")->value();
-
-                auto box = make_shared<LauncherItem>(num++, name, description, image, cmd);
-                add(box);
-                box->move_to_center(Point(m_boxes.size() * ITEM_SPACE, height() / 2));
-
-#ifdef DO_SCALING
-                // pre-seed the image cache
-                for (auto s = 0.5; s <= 2.0; s += 0.01)
-                    box->scale_box(s);
-#endif
-
-                box->scale_box(m_boxes.size() * ITEM_SPACE - box->width() / 2);
-
-                m_boxes.push_back(box);
+                for (auto screen = feed->first_node("screen"); screen; screen = screen->next_sibling())
+                {
+                    for (auto entry = screen->first_node("entry"); entry; entry = entry->next_sibling())
+                    {
+                        detail::add_search_path(detail::extract_dirname(file));
+                        load_entry(entry);
+                    }
+                }
+            }
+            else
+            {
+                for (auto entry = doc.first_node("entry"); entry; entry = entry->next_sibling())
+                {
+                    detail::add_search_path(detail::extract_dirname(file));
+                    load_entry(entry);
+                }
             }
         }
 
         start_snap();
-
-        // super nasty having to put this here
-        add(m_popup);
 
         return 0;
     }
@@ -309,59 +366,19 @@ private:
     int m_moving_x{0};
     int m_offset{0};
     vector<shared_ptr<LauncherItem>> m_boxes;
-    Popup m_popup;
     PropertyAnimator m_animation;
 };
 
 int main(int argc, const char** argv)
 {
-    Application app(argc, argv, "launcher");
+    Application app(argc, argv);
+
+    detail::add_search_path(DATADIR "/egt/launcher/");
 
     LauncherWindow win;
-    win.load(detail::exe_pwd() + "/../share/egt/examples/launcher/*.xml");
+    win.load(DATADIR "/egt/examples/");
+    win.load(DATADIR "/egt/samples/");
     win.show();
-
-#ifdef SHOW_STARFIELD
-    std::random_device r;
-    std::default_random_engine e1 {r()};
-    std::uniform_int_distribution<int> x_dist {0, 800};
-    std::uniform_int_distribution<int> y_dist {0, 480};
-    std::uniform_int_distribution<int> d_dist {100, 5000};
-    std::uniform_int_distribution<int> s_dist {2, 6};
-
-    for (int i = 0; i < 100; i++)
-    {
-        auto star = make_shared<CircleWidget>(Circle(Point(x_dist(e1), y_dist(e1)), s_dist(e1)));
-        win.add(star);
-        star->set_color(Palette::ColorId::button_bg, Palette::white);
-
-        auto in = new PropertyAnimator(0, 255, std::chrono::seconds(3), easing_spring);
-        in->on_change([star](float_t value)
-        {
-            auto color = star->color(Palette::ColorId::button_bg);
-            color.color().alpha(value);
-            star->set_color(Palette::ColorId::button_bg, color);
-        });
-
-        auto out = new PropertyAnimator(255, 0, std::chrono::seconds(3), easing_spring);
-        out->reverse(true);
-        out->on_change([star](float_t value)
-        {
-            auto color = star->color(Palette::ColorId::button_bg);
-            color.color().alpha(value);
-            star->set_color(Palette::ColorId::button_bg, color);
-        });
-
-        auto delay = new AnimationDelay(std::chrono::milliseconds(d_dist(e1)));
-
-        auto sequence = new AnimationSequence(true);
-        sequence->add(*delay);
-        sequence->add(*in);
-        sequence->add(*out);
-
-        sequence->start();
-    }
-#endif
 
     return app.run();
 }

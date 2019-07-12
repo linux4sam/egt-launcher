@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<entry>
+  <title>Contacts</title>
+  <description></description>
+  <link rel="enclosure" type="image/png" href="contacts.png" />
+  <arg></arg>
+</entry>
+<entry>
+  <title>Phone</title>
+  <description></description>
+  <link rel="enclosure" type="image/png" href="phone.png" />
+  <arg></arg>
+</entry>
+<entry>
+  <title>Inbox</title>
+  <description></description>
+  <link rel="enclosure" type="image/png" href="inbox.png" />
+  <arg></arg>
+</entry>
+<entry>
+  <title>News</title>
+  <description></description>
+  <link rel="enclosure" type="image/png" href="news.png" />
+  <arg></arg>
+</entry>
+<entry>
+  <title>Food</title>
+  <description></description>
+  <link rel="enclosure" type="image/png" href="food.png" />
+  <arg></arg>
+</entry>
+<entry>
+  <title>Camera</title>
+  <description></description>
+  <link rel="enclosure" type="image/png" href="camera.png" />
+  <arg></arg>
+</entry>
+<entry>
+  <title>Traffic</title>
+  <description></description>
+  <link rel="enclosure" type="image/png" href="traffic.png" />
+  <arg></arg>
+</entry>
+<entry>
+  <title>Flights</title>
+  <description></description>
+  <link rel="enclosure" type="image/png" href="flights.png" />
+  <arg></arg>
+</entry>
+<entry>
+  <title>Navigation</title>
+  <description></description>
+  <link rel="enclosure" type="image/png" href="navigation.png" />
+  <arg></arg>
+</entry>
