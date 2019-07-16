@@ -7,6 +7,7 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
 #include <array>
 #include <egt/detail/filesystem.h>
 #include <egt/detail/imagecache.h>
@@ -104,7 +105,7 @@ public:
             Application::instance().event().quit();
 
 #ifdef HAVE_EGT_DETAIL_SCREEN_KMSSCREEN_H
-            // TODO: explicitly close KMS
+            // explicitly close KMS
             if (detail::KMSScreen::instance())
                 detail::KMSScreen::instance()->close();
 #endif
@@ -199,6 +200,10 @@ public:
         {
             std::cerr << "Exception :: " << e.what();
         }
+
+        // give some determinism to the order of results
+        std::sort(files.begin(), files.end());
+
         return files;
     }
 
