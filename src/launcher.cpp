@@ -342,6 +342,9 @@ public:
 
     void start_snap()
     {
+        if (m_boxes.empty())
+            return;
+
         m_animation.stop();
 
         auto center = box().center();
