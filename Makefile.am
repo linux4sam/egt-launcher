@@ -19,3 +19,10 @@ dist_egt_launcher_DATA = $(wildcard $(top_srcdir)/images/*.png) \
 	$(top_srcdir)/images/background.jpg
 egt_launcher_LDFLAGS = $(AM_LDFLAGS)
 egt_launcher_SCRIPTS = launch.sh
+
+EXTRA_DIST = \
+	README.md \
+	COPYING \
+	rapidxml \
+	launch.sh \
+	example.xml
