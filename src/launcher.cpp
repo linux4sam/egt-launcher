@@ -381,8 +381,20 @@ int main(int argc, const char** argv)
     detail::add_search_path(DATADIR "/egt/launcher/");
 
     LauncherWindow win;
-    win.load(DATADIR "/egt/examples/");
-    win.load(DATADIR "/egt/samples/");
+
+    // load some default directories if nothing is specified
+    if (argc <= 1)
+    {
+        win.load(DATADIR "/egt/examples/");
+        win.load(DATADIR "/egt/samples/");
+        win.load("/opt/ApplicationLauncher/applications/xml/");
+    }
+    else
+    {
+        for (auto i = 1; i < argc; i++)
+            win.load(argv[i]);
+    }
+
     win.show();
 
     return app.run();
