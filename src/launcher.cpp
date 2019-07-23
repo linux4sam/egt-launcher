@@ -30,23 +30,7 @@ using namespace egt;
 
 namespace filesys = std::experimental::filesystem;
 
-#ifdef DO_SCALING
-/**
- * Calculate a scale relative to how far something is the center.
- */
-static float sliding_scale(int win_w, int item_w, int item_pos,
-                           float min = 0.5, float max = 1.0)
-{
-    float range = win_w / 2;
-    float delta = std::fabs(range - (item_pos + (item_w / 2)));
-    float scale = 1.0 - (delta / range);
-    if (scale < min || scale > max)
-        return min;
-    return scale;
-}
-#endif
-
-/**
+/*
  * Execute a command.
  */
 static std::string exec(const char* cmd, bool wait = false)
@@ -68,8 +52,6 @@ static std::string exec(const char* cmd, bool wait = false)
     return result;
 }
 
-#define ITEM_SPACE 250
-
 static int itemnum = 0;
 
 /*
@@ -89,6 +71,7 @@ public:
           m_description(description),
           m_exec(exec)
     {
+        flags().set(Widget::flag::no_layout);
         set_color(Palette::ColorId::label_text, Palette::white);
         set_image_align(alignmask::center | alignmask::top);
         set_text_align(alignmask::center | alignmask::bottom);
@@ -121,23 +104,14 @@ public:
         }
     }
 
-    void scale_box(int pos)
-    {
-        ignoreparam(pos);
-
-#ifdef DO_SCALING
-        auto c = center();
-        float s = sliding_scale(parent()->w(), w(), pos);
-        label_enabled(s > 0.9);
-        scale_image(s, true);
-        move_to_center(c);
-#endif
-    }
-
     inline int num() const { return m_num; }
+    inline string name() const { return m_name; }
+    inline double angle() const { return m_angle; }
+    inline void set_angle(double angle) { m_angle = angle; }
 
 private:
-    int m_num;
+    int m_num{0};
+    double m_angle{0.};
     string m_name;
     string m_description;
     string m_exec;
@@ -150,12 +124,7 @@ class LauncherWindow : public TopWindow
 {
 public:
     LauncherWindow()
-        : m_animation(0, 0, std::chrono::milliseconds(200),
-                      easing_quintic_easein)
     {
-        m_animation.on_change(std::bind(&LauncherWindow::move_boxes, this,
-                                        std::placeholders::_1));
-
         add(make_shared<ImageLabel>(Image("background.png")));
 
         auto logo = std::make_shared<ImageLabel>(Image("@128px/microchip_logo_white.png"));
@@ -169,7 +138,7 @@ public:
         add(egt_logo);
     }
 
-    std::vector<std::string> get_files(const std::string &dir)
+    std::vector<std::string> get_files(const std::string& dir)
     {
         std::vector<std::string> files;
 
@@ -196,7 +165,7 @@ public:
                 }
             }
         }
-        catch (std::system_error & e)
+        catch (std::system_error& e)
         {
             std::cerr << "Exception :: " << e.what();
         }
@@ -234,19 +203,9 @@ public:
         string cmd = node->first_node("arg")->value();
 
         auto box = make_shared<LauncherItem>(name, description, image, cmd);
-        add(box);
         box->resize(Size(box->width(), height() / 2));
-        box->move_to_center(Point(m_boxes.size() * ITEM_SPACE, height() / 2));
-
-#ifdef DO_SCALING
-        // pre-seed the image cache
-        for (auto s = 0.5; s <= 2.0; s += 0.01)
-            box->scale_box(s);
-#endif
-
-        box->scale_box(m_boxes.size() * ITEM_SPACE - box->width() / 2);
-
         m_boxes.push_back(box);
+        add(box);
     }
 
     virtual int load(const std::string& dir)
@@ -281,7 +240,17 @@ public:
             }
         }
 
-        start_snap();
+        m_drag_angles.clear();
+
+        // evenly space each item at an angle
+        auto anglesep = 360. / m_boxes.size();
+        for (auto& box : detail::reverse_iterate(m_boxes))
+        {
+            box->set_angle((box->num() * anglesep));
+            m_drag_angles.push_back(box->angle());
+        }
+
+        move_boxes();
 
         return 0;
     }
@@ -292,89 +261,54 @@ public:
 
         switch (event.id())
         {
-        case eventid::raw_pointer_down:
-            if (!m_moving)
-            {
-                m_moving = true;
-                m_moving_x = event.pointer().point.x();
-                m_offset = m_boxes[0]->center().x();
-            }
+        case eventid::pointer_drag_start:
+            m_drag_angles.clear();
+            for (auto& box : m_boxes)
+                m_drag_angles.push_back(box->angle());
             break;
-        case eventid::raw_pointer_up:
-            m_moving = false;
-            start_snap();
-            break;
-        case eventid::raw_pointer_move:
-            if (m_moving)
-            {
-                move_boxes(event.pointer().point.x());
-                event.stop();
-            }
+        case eventid::pointer_drag:
+            move_boxes(event.pointer().point.x() - event.pointer().drag_start.x());
+            event.stop();
             break;
         default:
             break;
         }
     }
 
-    void move_boxes(int x)
+    void move_boxes(int diff = 0)
     {
-        auto diff = x - m_moving_x;
-
-        for (auto& box : m_boxes)
-        {
-            auto pos = m_offset + (box->num() * ITEM_SPACE) + diff;
-
-            Rect to(box->box());
-            to.set_x(pos);
-
-            bool visible = Rect::intersect(Rect::merge(to, box->box()), this->box());
-            if (visible)
-            {
-                box->move_to_center(Point(pos, box->center().y()));
-                box->scale_box(pos - box->width() / 2);
-            }
-            else
-            {
-                box->move_to_center(Point(pos, box->center().y()));
-            }
-        }
-    }
-
-    void start_snap()
-    {
-        if (m_boxes.empty())
+        if (m_boxes.empty() || m_boxes.size() != m_drag_angles.size())
             return;
 
-        m_animation.stop();
+        Point ecenter(center().x(), -400);
+        auto a = 1000. / 2.;
+        auto b = 1200. / 2.;
 
-        auto center = box().center();
-        auto distance = width();
-
+        auto angles = m_drag_angles.begin();
         for (auto& box : m_boxes)
         {
-            if (center.distance_to(box->box().center()) < std::abs(distance))
-            {
-                distance = center.distance_to(box->box().center());
-                if (center.x() < box->box().center().x())
-                    distance *= -1;
-            }
+            // adjust the box angle
+            auto angle = *angles;
+            angle -= (diff * .2);
+            box->set_angle(angle);
+
+            // x,y on the ellipse at the specified angle with ellipse center at 0,0
+            auto x = a * std::cos(detail::to_radians(90., angle));
+            auto y = b * std::sin(detail::to_radians(90., angle));
+
+            // adjust position of ellipse
+            x += ecenter.x();
+            y += ecenter.y();
+
+            box->move_to_center(Point(x, y));
+
+            ++angles;
         }
-
-        m_animation.set_starting(0);
-        m_animation.set_ending(distance);
-        m_animation.set_duration(std::chrono::milliseconds(static_cast<uint32_t>(std::abs(distance))));
-        m_animation.start();
-
-        m_moving_x = 0;
-        m_offset = m_boxes[0]->center().x();
     }
 
 private:
-    bool m_moving {false};
-    int m_moving_x{0};
-    int m_offset{0};
     vector<shared_ptr<LauncherItem>> m_boxes;
-    PropertyAnimator m_animation;
+    vector<double> m_drag_angles;
 };
 
 int main(int argc, const char** argv)
@@ -382,6 +316,7 @@ int main(int argc, const char** argv)
     Application app(argc, argv);
 
     detail::add_search_path(DATADIR "/egt/launcher/");
+    detail::add_search_path("images/");
 
     LauncherWindow win;
 
@@ -390,7 +325,7 @@ int main(int argc, const char** argv)
     {
         win.load(DATADIR "/egt/examples/");
         win.load(DATADIR "/egt/samples/");
-        win.load("/opt/ApplicationLauncher/applications/xml/");
+        //win.load("/opt/ApplicationLauncher/applications/xml/");
     }
     else
     {
