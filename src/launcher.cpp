@@ -13,7 +13,7 @@
 #include <egt/detail/imagecache.h>
 #include <egt/ui>
 #include <experimental/filesystem>
-#include <iostream>
+#include <fstream>
 #include <memory>
 #include <rapidxml.hpp>
 #include <rapidxml_utils.hpp>
@@ -52,20 +52,57 @@ static std::string exec(const char* cmd, bool wait = false)
     return result;
 }
 
-static int itemnum = 0;
+class LauncherWindow;
+
+/**
+ * Normalize a value to a range.
+ *
+ * This assumes the value wraps when it goes below @b start or above @b end, and
+ * returns a value within the allowed range.
+ */
+template<class T>
+T normalize_to_range( const T value, const T start, const T end )
+{
+    const auto width = end - start;
+    const auto offset = value - start;
+
+    return (offset - ((offset / width) * width)) + start;
+}
+
+template<>
+double normalize_to_range<double>(const double value, const double start, const double end)
+{
+    const auto width = end - start;
+    const auto offset = value - start;
+
+    return ( offset - ( floor( offset / width ) * width ) ) + start ;
+}
+
+template<>
+float normalize_to_range<float>(const float value, const float start, const float end)
+{
+    const auto width = end - start;
+    const auto offset = value - start;
+    return ( offset - ( floor( offset / width ) * width ) ) + start ;
+}
 
 /*
  * A launcher menu item.
  */
 class LauncherItem : public ImageLabel
 {
+    static int itemnum;
+
 public:
-    LauncherItem(const string& name, const string& description,
+
+    LauncherItem(LauncherWindow& window,
+                 const string& name, const string& description,
                  const string& image, const string& exec, int x = 0, int y = 0)
         : ImageLabel(Image(image),
                      name,
                      Rect(Point(x, y), Size()),
                      alignmask::center),
+          m_window(window),
           m_num(itemnum++),
           m_name(name),
           m_description(description),
@@ -77,45 +114,31 @@ public:
         set_text_align(alignmask::center | alignmask::bottom);
     }
 
-    void handle(Event& event) override
-    {
-        ImageLabel::handle(event);
-
-        switch (event.id())
-        {
-        case eventid::pointer_click:
-        {
-            Application::instance().event().quit();
-
-#ifdef HAVE_EGT_DETAIL_SCREEN_KMSSCREEN_H
-            // explicitly close KMS
-            if (detail::KMSScreen::instance())
-                detail::KMSScreen::instance()->close();
-#endif
-
-            string cmd = DATADIR "/egt/launcher/launch.sh " + m_exec + " &";
-            exec(cmd.c_str());
-
-            event.stop();
-            break;
-        }
-        default:
-            break;
-        }
-    }
+    virtual void handle(Event& event) override;
 
     inline int num() const { return m_num; }
     inline string name() const { return m_name; }
     inline double angle() const { return m_angle; }
-    inline void set_angle(double angle) { m_angle = angle; }
+    inline void set_angle(double angle)
+    {
+        m_angle = normalize_to_range<double>(angle, 0, 360);
+#ifdef ANGLE_DEBUG
+        ostringstream ss;
+        ss << m_angle;
+        set_text(ss.str());
+#endif
+    }
 
 private:
+    LauncherWindow& m_window;
     int m_num{0};
     double m_angle{0.};
     string m_name;
     string m_description;
     string m_exec;
 };
+
+const auto OFFSET_FILENAME = "/tmp/egt-launcher-offset";
 
 /**
  * Main launcher window.
@@ -138,7 +161,23 @@ public:
         add(egt_logo);
     }
 
-    std::vector<std::string> get_files(const std::string& dir)
+    void launch(const std::string& exe) const
+    {
+        Application::instance().event().quit();
+
+#ifdef HAVE_EGT_DETAIL_SCREEN_KMSSCREEN_H
+        // explicitly close KMS
+        if (detail::KMSScreen::instance())
+            detail::KMSScreen::instance()->close();
+#endif
+
+        save_offset();
+
+        string cmd = DATADIR "/egt/launcher/launch.sh " + exe + " &";
+        exec(cmd.c_str());
+    }
+
+    static std::vector<std::string> get_files(const std::string& dir)
     {
         std::vector<std::string> files;
 
@@ -184,7 +223,6 @@ public:
         string name = node->first_node("title")->value();
 
         string description;
-
         if (node->first_node("description"))
             description = node->first_node("description")->value();
 
@@ -202,7 +240,7 @@ public:
 
         string cmd = node->first_node("arg")->value();
 
-        auto box = make_shared<LauncherItem>(name, description, image, cmd);
+        auto box = make_shared<LauncherItem>(*this, name, description, image, cmd);
         box->resize(Size(box->width(), height() / 2));
         m_boxes.push_back(box);
         add(box);
@@ -244,15 +282,36 @@ public:
 
         // evenly space each item at an angle
         auto anglesep = 360. / m_boxes.size();
-        for (auto& box : detail::reverse_iterate(m_boxes))
+        auto angleoffset = load_offset();
+        for (auto& box : m_boxes)
         {
-            box->set_angle((box->num() * anglesep));
+            box->set_angle(angleoffset + (box->num() * anglesep));
             m_drag_angles.push_back(box->angle());
         }
 
         move_boxes();
 
         return 0;
+    }
+
+    double load_offset() const
+    {
+        double offset = 0.;
+        ifstream in(OFFSET_FILENAME);
+        if (in.is_open())
+            in >> offset;
+        return offset;
+    }
+
+    void save_offset() const
+    {
+        if (m_boxes.empty())
+            return;
+
+        auto offset = m_boxes.front()->angle();
+        ofstream out(OFFSET_FILENAME, ios::trunc);
+        if (out.is_open())
+            out << offset;
     }
 
     void handle(Event& event) override
@@ -287,14 +346,17 @@ public:
         auto angles = m_drag_angles.begin();
         for (auto& box : m_boxes)
         {
+            const auto old_angle = box->angle();
+            const auto ANGLE_SPEED_FACTOR = 0.2;
+
             // adjust the box angle
             auto angle = *angles;
-            angle -= (diff * .2);
+            angle -= (diff * ANGLE_SPEED_FACTOR);
             box->set_angle(angle);
 
             // x,y on the ellipse at the specified angle with ellipse center at 0,0
-            auto x = a * std::cos(detail::to_radians(90., angle));
-            auto y = b * std::sin(detail::to_radians(90., angle));
+            auto x = a * std::cos(detail::to_radians(0., angle));
+            auto y = b * std::sin(detail::to_radians(0., angle));
 
             // adjust position of ellipse
             x += ecenter.x();
@@ -310,6 +372,25 @@ private:
     vector<shared_ptr<LauncherItem>> m_boxes;
     vector<double> m_drag_angles;
 };
+
+int LauncherItem::itemnum = 0;
+
+void LauncherItem::handle(Event& event)
+{
+    ImageLabel::handle(event);
+
+    switch (event.id())
+    {
+    case eventid::pointer_click:
+    {
+        m_window.launch(m_exec);
+        event.stop();
+        break;
+    }
+    default:
+        break;
+    }
+}
 
 int main(int argc, const char** argv)
 {
