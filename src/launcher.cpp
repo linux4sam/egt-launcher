@@ -61,7 +61,7 @@ class LauncherWindow;
  * returns a value within the allowed range.
  */
 template<class T>
-T normalize_to_range( const T value, const T start, const T end )
+T normalize_to_range(const T value, const T start, const T end)
 {
     const auto width = end - start;
     const auto offset = value - start;
@@ -75,7 +75,7 @@ double normalize_to_range<double>(const double value, const double start, const 
     const auto width = end - start;
     const auto offset = value - start;
 
-    return ( offset - ( floor( offset / width ) * width ) ) + start ;
+    return (offset - (floor(offset / width) * width)) + start ;
 }
 
 template<>
@@ -83,7 +83,7 @@ float normalize_to_range<float>(const float value, const float start, const floa
 {
     const auto width = end - start;
     const auto offset = value - start;
-    return ( offset - ( floor( offset / width ) * width ) ) + start ;
+    return (offset - (floor(offset / width) * width)) + start ;
 }
 
 /*
@@ -148,7 +148,7 @@ class LauncherWindow : public TopWindow
 public:
     LauncherWindow()
     {
-        add(make_shared<ImageLabel>(Image("background.png")));
+        set_background(Image("background.png"));
 
         auto logo = std::make_shared<ImageLabel>(Image("@128px/microchip_logo_white.png"));
         logo->set_align(alignmask::center | alignmask::bottom);
@@ -339,15 +339,15 @@ public:
         if (m_boxes.empty() || m_boxes.size() != m_drag_angles.size())
             return;
 
-        Point ecenter(center().x(), -400);
-        auto a = 1000. / 2.;
-        auto b = 1200. / 2.;
+        Point ecenter(center().x(), height() * -0.83);
+        auto a = (width() * 1.25) * .5;
+        auto b = (height() * 2.5) * .5;
 
         auto angles = m_drag_angles.begin();
         for (auto& box : m_boxes)
         {
             const auto old_angle = box->angle();
-            const auto ANGLE_SPEED_FACTOR = 0.2;
+            const auto ANGLE_SPEED_FACTOR = width() * .0002;
 
             // adjust the box angle
             auto angle = *angles;
