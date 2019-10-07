@@ -200,13 +200,16 @@ public:
                     error_code ec;
                     iter.increment(ec);
                     if (ec)
-                        std::cerr << "Error While Accessing : " << iter->path().string() << " :: " << ec.message() << '\n';
+                    {
+                        std::cerr << "error accessing: " <<
+                                  iter->path().string() << " :: " << ec.message() << endl;
+                    }
                 }
             }
         }
         catch (std::system_error& e)
         {
-            std::cerr << "Exception :: " << e.what();
+            std::cerr << "exception: " << e.what() << endl;
         }
 
         // give some determinism to the order of results
@@ -215,7 +218,7 @@ public:
         return files;
     }
 
-    virtual void load_entry(rapidxml::xml_node<>* node)
+    void load_entry(rapidxml::xml_node<>* node)
     {
         if (!node->first_node("title"))
             return;
@@ -246,7 +249,7 @@ public:
         add(box);
     }
 
-    virtual int load(const std::string& dir)
+    int load(const std::string& dir)
     {
         std::vector<std::string> files = get_files(dir);
 
@@ -406,7 +409,6 @@ int main(int argc, const char** argv)
     {
         win.load(DATADIR "/egt/examples/");
         win.load(DATADIR "/egt/samples/");
-        //win.load("/opt/ApplicationLauncher/applications/xml/");
     }
     else
     {
