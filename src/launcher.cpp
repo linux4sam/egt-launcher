@@ -283,6 +283,25 @@ public:
 
         m_drag_angles.clear();
 
+        auto a =  width() * 1.25f / 2.f;
+        auto b =  height() / 2.f;
+
+        const auto min_perimeter = 225 * m_boxes.size();
+        while (true)
+        {
+            m_ellipse.set_radiusa(a);
+            m_ellipse.set_radiusb(b);
+
+            if (m_ellipse.perimeter() >= min_perimeter)
+                break;
+
+            a *= 1.01;
+            b *= 1.02;
+        }
+
+        m_ellipse.set_center(PointType<float>(width() / 2,
+                                              height() / 2 - m_ellipse.radiusb()));
+
         // evenly space each item at an angle
         auto anglesep = 360. / m_boxes.size();
         auto angleoffset = load_offset();
@@ -342,14 +361,9 @@ public:
         if (m_boxes.empty() || m_boxes.size() != m_drag_angles.size())
             return;
 
-        Point ecenter(center().x(), height() * -0.83);
-        auto a = (width() * 1.25) * .5;
-        auto b = (height() * 2.5) * .5;
-
         auto angles = m_drag_angles.begin();
         for (auto& box : m_boxes)
         {
-            const auto old_angle = box->angle();
             const auto ANGLE_SPEED_FACTOR = width() * .0002;
 
             // adjust the box angle
@@ -357,15 +371,10 @@ public:
             angle -= (diff * ANGLE_SPEED_FACTOR);
             box->set_angle(angle);
 
-            // x,y on the ellipse at the specified angle with ellipse center at 0,0
-            auto x = a * std::cos(detail::to_radians(0., angle));
-            auto y = b * std::sin(detail::to_radians(0., angle));
+            // x,y on the ellipse at the specified angle
+            auto point = m_ellipse.point_on_perimeter(angle);
 
-            // adjust position of ellipse
-            x += ecenter.x();
-            y += ecenter.y();
-
-            box->move_to_center(Point(x, y));
+            box->move_to_center(Point(point.x(), point.y()));
 
             ++angles;
         }
@@ -374,6 +383,7 @@ public:
 private:
     vector<shared_ptr<LauncherItem>> m_boxes;
     vector<double> m_drag_angles;
+    EllipseType<float> m_ellipse{};
 };
 
 int LauncherItem::itemnum = 0;
