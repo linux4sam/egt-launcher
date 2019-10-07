@@ -15,8 +15,8 @@ egt_launcher_SOURCES = src/launcher.cpp
 egt_launcher_CXXFLAGS = $(CUSTOM_CXXFLAGS) $(AM_CXXFLAGS)
 egt_launcher_LDADD = $(CUSTOM_LDADD)
 egt_launcherdir = $(prefix)/share/egt/launcher
-dist_egt_launcher_DATA = $(wildcard $(top_srcdir)/images/*.png) \
-	$(top_srcdir)/images/background.jpg
+dist_egt_launcher_DATA = $(top_srcdir)/images/background.png \
+	$(top_srcdir)/taglines.txt
 egt_launcher_LDFLAGS = $(AM_LDFLAGS)
 egt_launcher_SCRIPTS = launch.sh
 
@@ -25,4 +25,6 @@ EXTRA_DIST = \
 	COPYING \
 	rapidxml \
 	launch.sh \
-	example.xml
+	example.xml \
+	taglines.txt \
+	$(wildcard $(top_srcdir)/images/*.png)

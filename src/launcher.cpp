@@ -138,6 +138,7 @@ private:
     string m_exec;
 };
 
+int LauncherItem::itemnum = 0;
 const auto OFFSET_FILENAME = "/tmp/egt-launcher-offset";
 
 /**
@@ -336,6 +337,66 @@ public:
             out << offset;
     }
 
+    void lines(istream& in)
+    {
+        std::string line;
+        while (std::getline(in, line))
+        {
+            if (!line.empty())
+                m_lines.push_back(line);
+        }
+
+        if (!m_lines.empty())
+        {
+            auto vsizer = std::make_shared<Frame>(Size(width(), height() * .3f));
+            vsizer->move(Point(0, height() - height() * .3f));
+            add(vsizer);
+
+            auto label = std::make_shared<Label>();
+            label->color(Palette::ColorId::label_text, Palette::white);
+            vsizer->add(expand(label));
+
+            auto minx = 0 - vsizer->width();
+            auto maxx = width();
+            auto half = (width() - vsizer->width()) / 2;
+
+            auto in = std::make_shared<PropertyAnimator>(maxx, half,
+                      std::chrono::seconds(3),
+                      easing_exponential_easeout);
+            in->on_change([vsizer](int value)
+            {
+                vsizer->x(value);
+            });
+
+            auto delay1 = std::make_shared<AnimationDelay>(std::chrono::seconds(2));
+
+            auto out = std::make_shared<PropertyAnimator>(half + 1, minx,
+                       std::chrono::seconds(3),
+                       easing_exponential_easeout);
+            out->reverse(true);
+            out->on_change([this, vsizer, out, label](int value)
+            {
+                vsizer->x(value);
+
+                static size_t index = 0;
+                if (value == out->ending())
+                {
+                    label->text(m_lines[index]);
+                    if (++index >= m_lines.size())
+                        index = 0;
+                }
+            });
+
+            auto delay2 = std::make_shared<AnimationDelay>(std::chrono::seconds(2));
+
+            m_sequence.add(in);
+            m_sequence.add(delay1);
+            m_sequence.add(out);
+            m_sequence.add(delay2);
+            m_sequence.start();
+        }
+    }
+
     void handle(Event& event) override
     {
         TopWindow::handle(event);
@@ -384,9 +445,10 @@ private:
     vector<shared_ptr<LauncherItem>> m_boxes;
     vector<double> m_drag_angles;
     EllipseType<float> m_ellipse{};
+    vector<string> m_lines;
+    PropertyAnimator m_animation;
+    AnimationSequence m_sequence{true};
 };
-
-int LauncherItem::itemnum = 0;
 
 void LauncherItem::handle(Event& event)
 {
@@ -423,6 +485,12 @@ int main(int argc, char** argv)
     {
         for (auto i = 1; i < argc; i++)
             win.load(argv[i]);
+    }
+
+    {
+        ifstream in(egt::resolve_file_path("taglines.txt"), std::ios::binary);
+        if (in.is_open())
+            win.lines(in);
     }
 
     win.show();
