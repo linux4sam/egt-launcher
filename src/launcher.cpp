@@ -417,8 +417,7 @@ int main(int argc, const char** argv)
     // load some default directories if nothing is specified
     if (argc <= 1)
     {
-        win.load(DATADIR "/egt/examples/");
-        win.load(DATADIR "/egt/samples/");
+        win.load(DATADIR "/egt/");
     }
     else
     {
