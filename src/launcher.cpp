@@ -318,7 +318,7 @@ public:
 
     double load_offset() const
     {
-        double offset = 0.;
+        double offset = 90.;
         ifstream in(OFFSET_FILENAME);
         if (in.is_open())
             in >> offset;
