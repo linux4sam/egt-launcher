@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <array>
 #include <egt/detail/filesystem.h>
-#include <egt/detail/imagecache.h>
 #include <egt/ui>
 #include <experimental/filesystem>
 #include <fstream>
@@ -101,17 +100,17 @@ public:
         : ImageLabel(Image(image),
                      name,
                      Rect(Point(x, y), Size()),
-                     alignmask::center),
+                     AlignFlag::center),
           m_window(window),
           m_num(itemnum++),
           m_name(name),
           m_description(description),
           m_exec(exec)
     {
-        flags().set(Widget::flag::no_layout);
-        set_color(Palette::ColorId::label_text, Palette::white);
-        set_image_align(alignmask::center | alignmask::top);
-        set_text_align(alignmask::center | alignmask::bottom);
+        flags().set(Widget::Flag::no_layout);
+        color(Palette::ColorId::label_text, Palette::white);
+        image_align(AlignFlag::center | AlignFlag::top);
+        text_align(AlignFlag::center | AlignFlag::bottom);
     }
 
     virtual void handle(Event& event) override;
@@ -119,13 +118,13 @@ public:
     inline int num() const { return m_num; }
     inline string name() const { return m_name; }
     inline double angle() const { return m_angle; }
-    inline void set_angle(double angle)
+    inline void angle(double angle)
     {
         m_angle = normalize_to_range<double>(angle, 0, 360);
 #ifdef ANGLE_DEBUG
         ostringstream ss;
         ss << m_angle;
-        set_text(ss.str());
+        text(ss.str());
 #endif
     }
 
@@ -148,16 +147,16 @@ class LauncherWindow : public TopWindow
 public:
     LauncherWindow()
     {
-        set_background(Image("background.png"));
+        background(Image("background.png"));
 
         auto logo = std::make_shared<ImageLabel>(Image("@128px/microchip_logo_white.png"));
-        logo->set_align(alignmask::center | alignmask::bottom);
-        logo->set_margin(10);
+        logo->align(AlignFlag::center | AlignFlag::bottom);
+        logo->margin(10);
         add(logo);
 
         auto egt_logo = std::make_shared<ImageLabel>(Image("@128px/egt_logo_white.png"));
-        egt_logo->set_align(alignmask::center | alignmask::top);
-        egt_logo->set_margin(10);
+        egt_logo->align(AlignFlag::center | AlignFlag::top);
+        egt_logo->margin(10);
         add(egt_logo);
     }
 
@@ -266,7 +265,7 @@ public:
                 {
                     for (auto entry = screen->first_node("entry"); entry; entry = entry->next_sibling())
                     {
-                        detail::add_search_path(detail::extract_dirname(file));
+                        add_search_path(detail::extract_dirname(file));
                         load_entry(entry);
                     }
                 }
@@ -275,7 +274,7 @@ public:
             {
                 for (auto entry = doc.first_node("entry"); entry; entry = entry->next_sibling())
                 {
-                    detail::add_search_path(detail::extract_dirname(file));
+                    add_search_path(detail::extract_dirname(file));
                     load_entry(entry);
                 }
             }
@@ -289,8 +288,8 @@ public:
         const auto min_perimeter = 225 * m_boxes.size();
         while (true)
         {
-            m_ellipse.set_radiusa(a);
-            m_ellipse.set_radiusb(b);
+            m_ellipse.radiusa(a);
+            m_ellipse.radiusb(b);
 
             if (m_ellipse.perimeter() >= min_perimeter)
                 break;
@@ -299,7 +298,7 @@ public:
             b *= 1.02;
         }
 
-        m_ellipse.set_center(PointType<float>(width() / 2,
+        m_ellipse.center(PointType<float>(width() / 2,
                                               height() / 2 - m_ellipse.radiusb()));
 
         // evenly space each item at an angle
@@ -307,7 +306,7 @@ public:
         auto angleoffset = load_offset();
         for (auto& box : m_boxes)
         {
-            box->set_angle(angleoffset + (box->num() * anglesep));
+            box->angle(angleoffset + (box->num() * anglesep));
             m_drag_angles.push_back(box->angle());
         }
 
@@ -342,12 +341,12 @@ public:
 
         switch (event.id())
         {
-        case eventid::pointer_drag_start:
+        case EventId::pointer_drag_start:
             m_drag_angles.clear();
             for (auto& box : m_boxes)
                 m_drag_angles.push_back(box->angle());
             break;
-        case eventid::pointer_drag:
+        case EventId::pointer_drag:
             move_boxes(event.pointer().point.x() - event.pointer().drag_start.x());
             event.stop();
             break;
@@ -369,7 +368,7 @@ public:
             // adjust the box angle
             auto angle = *angles;
             angle -= (diff * ANGLE_SPEED_FACTOR);
-            box->set_angle(angle);
+            box->angle(angle);
 
             // x,y on the ellipse at the specified angle
             auto point = m_ellipse.point_on_perimeter(angle);
@@ -394,7 +393,7 @@ void LauncherItem::handle(Event& event)
 
     switch (event.id())
     {
-    case eventid::pointer_click:
+    case EventId::pointer_click:
     {
         m_window.launch(m_exec);
         event.stop();
@@ -409,8 +408,8 @@ int main(int argc, const char** argv)
 {
     Application app(argc, argv);
 
-    detail::add_search_path(DATADIR "/egt/launcher/");
-    detail::add_search_path("images/");
+    add_search_path(DATADIR "/egt/launcher/");
+    add_search_path("images/");
 
     LauncherWindow win;
 
