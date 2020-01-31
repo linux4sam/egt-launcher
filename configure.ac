@@ -18,6 +18,8 @@ CFLAGS="$CFLAGS -g"
 AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS"
             CFLAGS="$CFLAGS $PTHREAD_CFLAGS"], AC_MSG_ERROR(Can not find pthreads.  This is required.))
 
+AC_LANG(C++)
+
 AC_PROG_CXX
 AC_CHECK_HEADER_STDBOOL
 AC_C_INLINE
@@ -27,7 +29,18 @@ PKG_CHECK_MODULES(LIBEGT, [libegt], [], [
    AC_MSG_ERROR(libegt not found.  This is required.)
 ])
 
+save_CXXFLAGS="${CXXFLAGS}"
+save_CPPFLAGS="${CPPFLAGS}"
+save_LDFLAGS="${LDFLAGS}"
+CXXFLAGS="${LIBEGT_CFLAGS} ${CXXFLAGS}"
+CPPFLAGS="${LIBEGT_CFLAGS} ${CPPFLAGS}"
+LDFLAGS="${LIBEGT_LIBS} ${LDFLAGS}"
+
 AC_CHECK_HEADERS([egt/detail/screen/kmsscreen.h])
+
+CXXFLAGS="${save_CXXFLAGS}"
+CPPFLAGS="${save_CPPFLAGS}"
+LDFLAGS="${save_LDFLAGS}"
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
