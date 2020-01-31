@@ -147,14 +147,14 @@ class LauncherWindow : public TopWindow
 public:
     LauncherWindow()
     {
-        background(Image("background.png"));
+        background(Image("file:background.png"));
 
-        auto logo = std::make_shared<ImageLabel>(Image("@128px/microchip_logo_white.png"));
+        auto logo = std::make_shared<ImageLabel>(Image("icon:microchip_logo_white.png;128"));
         logo->align(AlignFlag::center | AlignFlag::bottom);
         logo->margin(10);
         add(logo);
 
-        auto egt_logo = std::make_shared<ImageLabel>(Image("@128px/egt_logo_white.png"));
+        auto egt_logo = std::make_shared<ImageLabel>(Image("icon:egt_logo_white.png;128"));
         egt_logo->align(AlignFlag::center | AlignFlag::top);
         egt_logo->margin(10);
         add(egt_logo);
@@ -242,7 +242,7 @@ public:
 
         string cmd = node->first_node("arg")->value();
 
-        auto box = make_shared<LauncherItem>(*this, name, description, image, cmd);
+        auto box = make_shared<LauncherItem>(*this, name, description, "file:" + image, cmd);
         box->resize(Size(box->width(), height() / 2));
         m_boxes.push_back(box);
         add(box);
