@@ -13,6 +13,7 @@
 #include <egt/ui>
 #include <experimental/filesystem>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <rapidxml.hpp>
 #include <rapidxml_utils.hpp>
