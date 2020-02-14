@@ -405,7 +405,7 @@ void LauncherItem::handle(Event& event)
     }
 }
 
-int main(int argc, const char** argv)
+int main(int argc, char** argv)
 {
     Application app(argc, argv);
 
