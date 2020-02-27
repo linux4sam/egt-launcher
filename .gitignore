@@ -33,3 +33,4 @@ stamp-h1
 *.gcno
 *.gcda
 egt-launcher
+build
