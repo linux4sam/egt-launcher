@@ -110,8 +110,9 @@ public:
     {
         flags().set(Widget::Flag::no_layout);
         color(Palette::ColorId::label_text, Palette::white);
-        image_align(AlignFlag::center | AlignFlag::top);
-        text_align(AlignFlag::center | AlignFlag::bottom);
+        image_align(AlignFlag::center | AlignFlag::bottom);
+        text_align(AlignFlag::center | AlignFlag::top);
+        font(egt::Font(20, egt::Font::Weight::bold));
     }
 
     virtual void handle(Event& event) override;
