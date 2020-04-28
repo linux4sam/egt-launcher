@@ -434,7 +434,7 @@ public:
             box->angle(angle);
 
             // x,y on the ellipse at the specified angle
-            auto point = m_ellipse.point_on_perimeter(angle);
+            auto point = m_ellipse.point_on_circumference(egt::detail::to_radians<double>(0,angle));
 
             box->move_to_center(Point(point.x(), point.y()));
 
