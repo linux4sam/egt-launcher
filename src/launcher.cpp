@@ -472,6 +472,10 @@ int main(int argc, char** argv)
 {
     Application app(argc, argv);
 
+    // ensure max brightness of LCD screen
+    Application::instance().screen()->brightness(
+        Application::instance().screen()->max_brightness());
+
     add_search_path(DATADIR "/egt/launcher/");
     add_search_path("images/");
 
