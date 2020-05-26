@@ -35,7 +35,6 @@ namespace filesys = std::experimental::filesystem;
  */
 static std::string exec(const char* cmd, bool wait = false)
 {
-    std::array<char, 128> buffer;
     std::string result;
     std::shared_ptr<FILE> pipe(popen(cmd, "r"), pclose);
     if (!pipe)
@@ -44,6 +43,7 @@ static std::string exec(const char* cmd, bool wait = false)
     {
         while (!feof(pipe.get()))
         {
+            std::array<char, 128> buffer;
             if (fgets(buffer.data(), 128, pipe.get()) != nullptr)
                 result += buffer.data();
         }
@@ -115,7 +115,7 @@ public:
         font(egt::Font(20, egt::Font::Weight::bold));
     }
 
-    virtual void handle(Event& event) override;
+    void handle(Event& event) override;
 
     inline int num() const { return m_num; }
     inline string name() const { return m_name; }
@@ -301,8 +301,8 @@ public:
             b *= 1.02;
         }
 
-        m_ellipse.center(PointType<float>(width() / 2,
-                                              height() / 2 - m_ellipse.radiusb()));
+        m_ellipse.center(PointType<float>(width() / 2.0,
+                                              height() / 2.0 - m_ellipse.radiusb()));
 
         // evenly space each item at an angle
         auto anglesep = 360. / m_boxes.size();
@@ -318,7 +318,7 @@ public:
         return 0;
     }
 
-    double load_offset() const
+    static double load_offset() const
     {
         double offset = 90.;
         ifstream in(OFFSET_FILENAME);
