@@ -51,5 +51,8 @@ CXXFLAGS="${save_CXXFLAGS}"
 CPPFLAGS="${save_CPPFLAGS}"
 LDFLAGS="${save_LDFLAGS}"
 
+AC_PATH_PROGS([CLANG_TIDY_BIN], [clang-tidy-9 clang-tidy-6.0 clang-tidy])
+AM_CONDITIONAL([HAVE_CLANG_TIDY_BIN], [test -n "$CLANG_TIDY_BIN"])
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

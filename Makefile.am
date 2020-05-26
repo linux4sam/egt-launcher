@@ -28,3 +28,15 @@ EXTRA_DIST = \
 	example.xml \
 	taglines.txt \
 	$(wildcard $(top_srcdir)/images/*.png)
+
+TIDY_OPTIONS = $(AM_CPPFLAGS) $(AM_CXXFLAGS) $(CPPFLAGS) $(CXXFLAGS) $(CUSTOM_CXXFLAGS)
+TIDY_SOURCE = $(SOURCES)
+
+tidy-local: all-am
+	@for source in $(TIDY_SOURCE); do \
+		[[ $$source == *.c ]] && continue; \
+		[[ $$source == *.h ]] && continue; \
+		$(CLANG_TIDY_BIN) $(srcdir)/$$source -- $(TIDY_OPTIONS); \
+	done
+
+tidy: tidy-local
