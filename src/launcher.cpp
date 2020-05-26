@@ -364,9 +364,9 @@ public:
             auto feed = doc.first_node("feed");
             if (feed)
             {
-                for (auto screen = feed->first_node("screen"); screen; screen = screen->next_sibling())
+                for (auto screen = feed->first_node("screen"); screen; screen = screen->next_sibling("screen"))
                 {
-                    for (auto entry = screen->first_node("entry"); entry; entry = entry->next_sibling())
+                    for (auto entry = screen->first_node("entry"); entry; entry = entry->next_sibling("entry"))
                     {
                         add_search_path(detail::extract_dirname(file));
                         load_entry(entry);
@@ -375,7 +375,7 @@ public:
             }
             else
             {
-                for (auto entry = doc.first_node("entry"); entry; entry = entry->next_sibling())
+                for (auto entry = doc.first_node("entry"); entry; entry = entry->next_sibling("entry"))
                 {
                     add_search_path(detail::extract_dirname(file));
                     load_entry(entry);
