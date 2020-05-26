@@ -28,6 +28,101 @@
 using namespace std;
 using namespace egt;
 
+/**
+ * Basic swipe detector which will invoke a callback with up/down/left/right.
+ */
+class SwipeDetect
+{
+public:
+
+    using SwipeCallback = std::function<void(const std::string& direction)>;
+
+    SwipeDetect() = delete;
+
+    explicit SwipeDetect(SwipeCallback callback)
+        : m_callback(std::move(callback))
+    {
+    }
+
+    void handle(egt::Event& event)
+    {
+        switch (event.id())
+        {
+        case egt::EventId::raw_pointer_down:
+        {
+            m_start = event.pointer().point;
+            m_start_time = std::chrono::steady_clock::now();
+            break;
+        }
+        case egt::EventId::raw_pointer_up:
+        {
+            const auto elapsed = std::chrono::steady_clock::now() - m_start_time;
+            if (elapsed <= m_allowed_time)
+            {
+                const auto dist = m_start - event.pointer().point;
+
+                if (std::abs(dist.x()) >= m_threshold && std::abs(dist.y()) <= m_restraint)
+                    m_callback((dist.x() < 0) ? "left" : "right");
+                else if (std::abs(dist.y()) >= m_threshold && std::abs(dist.x()) <= m_restraint)
+                    m_callback((dist.y() < 0) ? "up" : "down");
+            };
+
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
+    void threshold(int value)
+    {
+        m_threshold = value;
+    }
+
+    int threshold() const
+    {
+        return m_threshold;
+    }
+
+    void restraint(int value)
+    {
+        m_restraint = value;
+    }
+
+    int restraint() const
+    {
+        return m_restraint;
+    }
+
+    void allowed_time(const std::chrono::milliseconds& value)
+    {
+        m_allowed_time = value;
+    }
+
+    std::chrono::milliseconds allowed_time() const
+    {
+        return m_allowed_time;
+    }
+
+protected:
+
+    /// Required min distance traveled.
+    int m_threshold{150};
+    /// Maximum distance allowed at the same time.
+    int m_restraint{100};
+    /// Maximum time allowed to travel.
+    std::chrono::milliseconds m_allowed_time{300};
+
+private:
+
+    /// Starting point
+    egt::DisplayPoint m_start;
+    /// Start time of m_start
+    std::chrono::time_point<std::chrono::steady_clock> m_start_time;
+    /// Callback to invoke when finished.
+    SwipeCallback m_callback;
+};
+
 namespace filesys = std::experimental::filesystem;
 
 /*
@@ -161,6 +256,11 @@ public:
         egt_logo->align(AlignFlag::center | AlignFlag::top);
         egt_logo->margin(10);
         add(egt_logo);
+
+        m_swipe_animation.on_change([this](egt::PropertyAnimator::Value value)
+                                    {
+                                        move_boxes(value);
+                                    });
     }
 
     void launch(const std::string& exe) const
@@ -405,14 +505,16 @@ public:
         switch (event.id())
         {
         case EventId::pointer_drag_start:
-            m_drag_angles.clear();
-            for (auto& box : m_boxes)
-                m_drag_angles.push_back(box->angle());
+            m_swipe_animation.stop();
+            reset_angles();
             break;
         case EventId::pointer_drag:
-            move_boxes(event.pointer().point.x() - event.pointer().drag_start.x());
-            event.stop();
-            break;
+            {
+                const auto dist = event.pointer().point - event.pointer().drag_start;
+                move_boxes(dist.x());
+                event.stop();
+                break;
+            }
         default:
             break;
         }
@@ -442,13 +544,45 @@ public:
         }
     }
 
+    void move_boxes_swipe(bool right)
+    {
+        // if animating, ignore event and wait for it to finish
+        if (m_swipe_animation.running())
+            return;
+
+        reset_angles();
+
+        if (right)
+        {
+            m_swipe_animation.starting(0);
+            m_swipe_animation.ending(-200);
+        }
+        else
+        {
+            m_swipe_animation.starting(0);
+            m_swipe_animation.ending(200);
+        }
+
+        m_swipe_animation.start();
+    }
+
 private:
+
+    void reset_angles()
+    {
+        m_drag_angles.clear();
+        for (auto& box : m_boxes)
+            m_drag_angles.push_back(box->angle());
+    }
+
     vector<shared_ptr<LauncherItem>> m_boxes;
     vector<double> m_drag_angles;
     EllipseType<float> m_ellipse{};
     vector<string> m_lines;
     PropertyAnimator m_animation;
     AnimationSequence m_sequence{true};
+    PropertyAnimator m_swipe_animation{std::chrono::seconds(1),
+            egt::easing_circular_easeout};
 };
 
 void LauncherItem::handle(Event& event)
@@ -497,6 +631,20 @@ int main(int argc, char** argv)
         if (in.is_open())
             win.lines(in);
     }
+
+    SwipeDetect swipe([&win](const std::string & direction)
+    {
+        if (direction == "right")
+            win.move_boxes_swipe(true);
+        else if (direction == "left")
+            win.move_boxes_swipe(false);
+    });
+
+    // feed global events to swipe detector
+    egt::Input::global_input().on_event([&swipe](egt::Event & event)
+    {
+        swipe.handle(event);
+    });
 
     win.show();
 
