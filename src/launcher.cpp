@@ -380,7 +380,7 @@ public:
                 vsizer->x(value);
 
                 static size_t index = 0;
-                if (value == out->ending())
+                if (detail::float_equal(value, out->ending()))
                 {
                     label->text(m_lines[index]);
                     if (++index >= m_lines.size())
