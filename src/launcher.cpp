@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <egt/detail/filesystem.h>
 #include <egt/ui>
 #include <experimental/filesystem>
@@ -24,9 +25,6 @@
 #ifdef HAVE_EGT_DETAIL_SCREEN_KMSSCREEN_H
 #include <egt/detail/screen/kmsscreen.h>
 #endif
-
-using namespace std;
-using namespace egt;
 
 /**
  * Basic swipe detector which will invoke a callback with up/down/left/right.
@@ -131,6 +129,7 @@ namespace filesys = std::experimental::filesystem;
 static std::string exec(const char* cmd, bool wait = false)
 {
     std::string result;
+    // NOLINTNEXTLINE(cert-env33-c)
     std::shared_ptr<FILE> pipe(popen(cmd, "r"), pclose);
     if (!pipe)
         throw std::runtime_error("popen() failed!");
@@ -138,7 +137,7 @@ static std::string exec(const char* cmd, bool wait = false)
     {
         while (!feof(pipe.get()))
         {
-            std::array<char, 128> buffer;
+            std::array<char, 128> buffer{};
             if (fgets(buffer.data(), 128, pipe.get()) != nullptr)
                 result += buffer.data();
         }
@@ -170,7 +169,7 @@ double normalize_to_range<double>(const double value, const double start, const 
     const auto width = end - start;
     const auto offset = value - start;
 
-    return (offset - (floor(offset / width) * width)) + start ;
+    return (offset - (std::floor(offset / width) * width)) + start ;
 }
 
 template<>
@@ -178,48 +177,50 @@ float normalize_to_range<float>(const float value, const float start, const floa
 {
     const auto width = end - start;
     const auto offset = value - start;
-    return (offset - (floor(offset / width) * width)) + start ;
+    return (offset - (std::floor(offset / width) * width)) + start ;
 }
 
 /*
  * A launcher menu item.
  */
-class LauncherItem : public ImageLabel
+class LauncherItem : public egt::ImageLabel
 {
     static int itemnum;
 
 public:
 
     LauncherItem(LauncherWindow& window,
-                 const string& name, const string& description,
-                 const string& image, const string& exec, int x = 0, int y = 0)
-        : ImageLabel(Image(image),
+                 // NOLINTNEXTLINE(modernize-pass-by-value)
+                 const std::string& name, const std::string& description,
+                 // NOLINTNEXTLINE(modernize-pass-by-value)
+                 const std::string& image, const std::string& exec, int x = 0, int y = 0)
+        : ImageLabel(egt::Image(image),
                      name,
-                     Rect(Point(x, y), Size()),
-                     AlignFlag::center),
+                     egt::Rect(egt::Point(x, y), egt::Size()),
+                     egt::AlignFlag::center),
           m_window(window),
           m_num(itemnum++),
           m_name(name),
           m_description(description),
           m_exec(exec)
     {
-        flags().set(Widget::Flag::no_layout);
-        color(Palette::ColorId::label_text, Palette::white);
-        image_align(AlignFlag::center | AlignFlag::bottom);
-        text_align(AlignFlag::center | AlignFlag::top);
+        flags().set(egt::Widget::Flag::no_layout);
+        color(egt::Palette::ColorId::label_text, egt::Palette::white);
+        image_align(egt::AlignFlag::center | egt::AlignFlag::bottom);
+        text_align(egt::AlignFlag::center | egt::AlignFlag::top);
         font(egt::Font(20, egt::Font::Weight::bold));
     }
 
-    void handle(Event& event) override;
+    void handle(egt::Event& event) override;
 
     inline int num() const { return m_num; }
-    inline string name() const { return m_name; }
+    inline std::string name() const { return m_name; }
     inline double angle() const { return m_angle; }
     inline void angle(double angle)
     {
         m_angle = normalize_to_range<double>(angle, 0, 360);
 #ifdef ANGLE_DEBUG
-        ostringstream ss;
+        std::ostringstream ss;
         ss << m_angle;
         text(ss.str());
 #endif
@@ -229,9 +230,9 @@ private:
     LauncherWindow& m_window;
     int m_num{0};
     double m_angle{0.};
-    string m_name;
-    string m_description;
-    string m_exec;
+    std::string m_name;
+    std::string m_description;
+    std::string m_exec;
 };
 
 int LauncherItem::itemnum = 0;
@@ -240,20 +241,20 @@ const auto OFFSET_FILENAME = "/tmp/egt-launcher-offset";
 /**
  * Main launcher window.
  */
-class LauncherWindow : public TopWindow
+class LauncherWindow : public egt::TopWindow
 {
 public:
     LauncherWindow()
     {
-        background(Image("file:background.png"));
+        background(egt::Image("file:background.png"));
 
-        auto logo = std::make_shared<ImageLabel>(Image("icon:microchip_logo_white.png;128"));
-        logo->align(AlignFlag::center | AlignFlag::bottom);
+        auto logo = std::make_shared<egt::ImageLabel>(egt::Image("icon:microchip_logo_white.png;128"));
+        logo->align(egt::AlignFlag::center | egt::AlignFlag::bottom);
         logo->margin(10);
         add(logo);
 
-        auto egt_logo = std::make_shared<ImageLabel>(Image("icon:egt_logo_white.png;128"));
-        egt_logo->align(AlignFlag::center | AlignFlag::top);
+        auto egt_logo = std::make_shared<egt::ImageLabel>(egt::Image("icon:egt_logo_white.png;128"));
+        egt_logo->align(egt::AlignFlag::center | egt::AlignFlag::top);
         egt_logo->margin(10);
         add(egt_logo);
 
@@ -265,17 +266,17 @@ public:
 
     void launch(const std::string& exe) const
     {
-        Application::instance().event().quit();
+        egt::Application::instance().event().quit();
 
 #ifdef HAVE_EGT_DETAIL_SCREEN_KMSSCREEN_H
         // explicitly close KMS
-        if (detail::KMSScreen::instance())
-            detail::KMSScreen::instance()->close();
+        if (egt::detail::KMSScreen::instance())
+            egt::detail::KMSScreen::instance()->close();
 #endif
 
         save_offset();
 
-        string cmd = DATADIR "/egt/launcher/launch.sh " + exe + " &";
+        const std::string cmd = DATADIR "/egt/launcher/launch.sh " + exe + " &";
         exec(cmd.c_str());
     }
 
@@ -299,19 +300,19 @@ public:
                             files.push_back(iter->path().string());
                     }
 
-                    error_code ec;
+                    std::error_code ec;
                     iter.increment(ec);
                     if (ec)
                     {
                         std::cerr << "error accessing: " <<
-                                  iter->path().string() << " :: " << ec.message() << endl;
+                            iter->path().string() << " :: " << ec.message() << std::endl;
                     }
                 }
             }
         }
         catch (std::system_error& e)
         {
-            std::cerr << "exception: " << e.what() << endl;
+            std::cerr << "exception: " << e.what() << std::endl;
         }
 
         // give some determinism to the order of results
@@ -325,13 +326,13 @@ public:
         if (!node->first_node("title"))
             return;
 
-        string name = node->first_node("title")->value();
+        const std::string name = node->first_node("title")->value();
 
-        string description;
+        std::string description;
         if (node->first_node("description"))
             description = node->first_node("description")->value();
 
-        string image;
+        std::string image;
         auto link = node->first_node("link");
         if (link)
         {
@@ -343,10 +344,10 @@ public:
         if (!node->first_node("arg"))
             return;
 
-        string cmd = node->first_node("arg")->value();
+        std::string cmd = node->first_node("arg")->value();
 
-        auto box = make_shared<LauncherItem>(*this, name, description, "file:" + image, cmd);
-        box->resize(Size(box->width(), height() / 2));
+        auto box = std::make_shared<LauncherItem>(*this, name, description, "file:" + image, cmd);
+        box->resize(egt::Size(box->width(), height() / 2));
         m_boxes.push_back(box);
         add(box);
     }
@@ -368,7 +369,7 @@ public:
                 {
                     for (auto entry = screen->first_node("entry"); entry; entry = entry->next_sibling("entry"))
                     {
-                        add_search_path(detail::extract_dirname(file));
+                        egt::add_search_path(egt::detail::extract_dirname(file));
                         load_entry(entry);
                     }
                 }
@@ -377,7 +378,7 @@ public:
             {
                 for (auto entry = doc.first_node("entry"); entry; entry = entry->next_sibling("entry"))
                 {
-                    add_search_path(detail::extract_dirname(file));
+                    egt::add_search_path(egt::detail::extract_dirname(file));
                     load_entry(entry);
                 }
             }
@@ -401,7 +402,7 @@ public:
             b *= 1.02;
         }
 
-        m_ellipse.center(PointType<float>(width() / 2.0,
+        m_ellipse.center(egt::PointType<float>(width() / 2.0,
                                               height() / 2.0 - m_ellipse.radiusb()));
 
         // evenly space each item at an angle
@@ -418,10 +419,10 @@ public:
         return 0;
     }
 
-    static double load_offset() const
+    static double load_offset()
     {
         double offset = 90.;
-        ifstream in(OFFSET_FILENAME);
+        std::ifstream in(OFFSET_FILENAME);
         if (in.is_open())
             in >> offset;
         return offset;
@@ -433,12 +434,12 @@ public:
             return;
 
         auto offset = m_boxes.front()->angle();
-        ofstream out(OFFSET_FILENAME, ios::trunc);
+        std::ofstream out(OFFSET_FILENAME, std::ios::trunc);
         if (out.is_open())
             out << offset;
     }
 
-    void lines(istream& in)
+    void lines(std::istream& in)
     {
         std::string line;
         while (std::getline(in, line))
@@ -449,38 +450,38 @@ public:
 
         if (!m_lines.empty())
         {
-            auto vsizer = std::make_shared<Frame>(Size(width(), height() * .3f));
-            vsizer->move(Point(0, height() - height() * .3f));
+            auto vsizer = std::make_shared<egt::Frame>(egt::Size(width(), height() * .3f));
+            vsizer->move(egt::Point(0, height() - height() * .3f));
             add(vsizer);
 
-            auto label = std::make_shared<Label>();
-            label->color(Palette::ColorId::label_text, Palette::white);
-            vsizer->add(expand(label));
+            auto label = std::make_shared<egt::Label>();
+            label->color(egt::Palette::ColorId::label_text, egt::Palette::white);
+            vsizer->add(egt::expand(label));
 
             auto minx = 0 - vsizer->width();
             auto maxx = width();
             auto half = (width() - vsizer->width()) / 2;
 
-            auto in = std::make_shared<PropertyAnimator>(maxx, half,
+            auto in = std::make_shared<egt::PropertyAnimator>(maxx, half,
                       std::chrono::seconds(3),
-                      easing_exponential_easeout);
+                                                              egt::easing_exponential_easeout);
             in->on_change([vsizer](int value)
             {
                 vsizer->x(value);
             });
 
-            auto delay1 = std::make_shared<AnimationDelay>(std::chrono::seconds(2));
+            auto delay1 = std::make_shared<egt::AnimationDelay>(std::chrono::seconds(2));
 
-            auto out = std::make_shared<PropertyAnimator>(half + 1, minx,
+            auto out = std::make_shared<egt::PropertyAnimator>(half + 1, minx,
                        std::chrono::seconds(3),
-                       easing_exponential_easeout);
+                                                               egt::easing_exponential_easeout);
             out->reverse(true);
             out->on_change([this, vsizer, out, label](int value)
             {
                 vsizer->x(value);
 
                 static size_t index = 0;
-                if (detail::float_equal(value, out->ending()))
+                if (egt::detail::float_equal(value, out->ending()))
                 {
                     label->text(m_lines[index]);
                     if (++index >= m_lines.size())
@@ -488,7 +489,7 @@ public:
                 }
             });
 
-            auto delay2 = std::make_shared<AnimationDelay>(std::chrono::seconds(2));
+            auto delay2 = std::make_shared<egt::AnimationDelay>(std::chrono::seconds(2));
 
             m_sequence.add(in);
             m_sequence.add(delay1);
@@ -498,17 +499,17 @@ public:
         }
     }
 
-    void handle(Event& event) override
+    void handle(egt::Event& event) override
     {
         TopWindow::handle(event);
 
         switch (event.id())
         {
-        case EventId::pointer_drag_start:
+        case egt::EventId::pointer_drag_start:
             m_swipe_animation.stop();
             reset_angles();
             break;
-        case EventId::pointer_drag:
+        case egt::EventId::pointer_drag:
             {
                 const auto dist = event.pointer().point - event.pointer().drag_start;
                 move_boxes(dist.x());
@@ -538,7 +539,7 @@ public:
             // x,y on the ellipse at the specified angle
             auto point = m_ellipse.point_on_circumference(egt::detail::to_radians<double>(0,angle));
 
-            box->move_to_center(Point(point.x(), point.y()));
+            box->move_to_center(egt::Point(point.x(), point.y()));
 
             ++angles;
         }
@@ -575,23 +576,23 @@ private:
             m_drag_angles.push_back(box->angle());
     }
 
-    vector<shared_ptr<LauncherItem>> m_boxes;
-    vector<double> m_drag_angles;
-    EllipseType<float> m_ellipse{};
-    vector<string> m_lines;
-    PropertyAnimator m_animation;
-    AnimationSequence m_sequence{true};
-    PropertyAnimator m_swipe_animation{std::chrono::seconds(1),
+    std::vector<std::shared_ptr<LauncherItem>> m_boxes;
+    std::vector<double> m_drag_angles;
+    egt::EllipseType<float> m_ellipse{};
+    std::vector<std::string> m_lines;
+    egt::PropertyAnimator m_animation;
+    egt::AnimationSequence m_sequence{true};
+    egt::PropertyAnimator m_swipe_animation{std::chrono::seconds(1),
             egt::easing_circular_easeout};
 };
 
-void LauncherItem::handle(Event& event)
+void LauncherItem::handle(egt::Event& event)
 {
-    ImageLabel::handle(event);
+    egt::ImageLabel::handle(event);
 
     switch (event.id())
     {
-    case EventId::pointer_click:
+    case egt::EventId::pointer_click:
     {
         m_window.launch(m_exec);
         event.stop();
@@ -604,14 +605,14 @@ void LauncherItem::handle(Event& event)
 
 int main(int argc, char** argv)
 {
-    Application app(argc, argv);
+    egt::Application app(argc, argv);
 
     // ensure max brightness of LCD screen
-    Application::instance().screen()->brightness(
-        Application::instance().screen()->max_brightness());
+    egt::Application::instance().screen()->brightness(
+        egt::Application::instance().screen()->max_brightness());
 
-    add_search_path(DATADIR "/egt/launcher/");
-    add_search_path("images/");
+    egt::add_search_path(DATADIR "/egt/launcher/");
+    egt::add_search_path("images/");
 
     LauncherWindow win;
 
@@ -627,7 +628,7 @@ int main(int argc, char** argv)
     }
 
     {
-        ifstream in(egt::resolve_file_path("taglines.txt"), std::ios::binary);
+        std::ifstream in(egt::resolve_file_path("taglines.txt"), std::ios::binary);
         if (in.is_open())
             win.lines(in);
     }
