@@ -1,10 +1,10 @@
 AC_PREREQ([2.69])
-AC_INIT([egt-launcher], [1.0])
+AC_INIT([egt-launcher],[1.0])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS
-AC_CANONICAL_SYSTEM
+AC_CANONICAL_TARGET
 PKG_PROG_PKG_CONFIG
 
 AM_INIT_AUTOMAKE([1.10 foreign subdir-objects])
@@ -12,18 +12,17 @@ AM_INIT_AUTOMAKE([1.10 foreign subdir-objects])
 # Enable quiet compiles on automake 1.11.
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-CXXFLAGS="$CXXFLAGS -std=c++14 -pedantic -g"
-CFLAGS="$CFLAGS -g"
-
-AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS"
-            CFLAGS="$CFLAGS $PTHREAD_CFLAGS"], AC_MSG_ERROR(Can not find pthreads.  This is required.))
-
 AC_LANG(C++)
-
 AC_PROG_CXX
+AX_CXX_COMPILE_STDCXX([14], [noext])
 AC_CHECK_HEADER_STDBOOL
 AC_C_INLINE
 AC_TYPE_UINT32_T
+
+AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS"
+            CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+            CXXFLAGS="$CXXFLAGS $PTHREAD_CFLAGS"],
+            AC_MSG_ERROR(Can not find pthreads.  This is required.))
 
 AC_DEFUN([EGT_CC_TRY_FLAG], [
   AC_MSG_CHECKING([whether $CC supports $1])
