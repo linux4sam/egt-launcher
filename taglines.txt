@@ -1,13 +1,13 @@
 Introducing the Ensemble Graphics Toolkit
-Visit http://ensemble.graphics to learn more!
+Visit http://www.microchip.com/egt to learn more!
 Free and released under the permissive Apache 2.0 license.
 Optimized to run on Microchip microprocessors running Linux.
 EGT is part of the Microchip Linux4SAM distribution.
-Visit http://ensemble.graphics to learn more!
+Visit http://www.microchip.com/egt to learn more!
 Modern C++ design on top of the latest in Linux graphics stack technology.
-Visit http://ensemble.graphics to learn more!
+Visit http://www.microchip.com/egt to learn more!
 Support for standard video, audio, and image formats.
 Use JPEG, PNG, SVG, and more right from your favorite graphics design tools.
 Develop on a PC or directly on a target processor quickly and iteratively.
-Visit http://ensemble.graphics to learn more!
+Visit http://www.microchip.com/egt to learn more!
 Hit the ground running with a stable, tested, and complete operating system.
