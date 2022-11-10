@@ -206,8 +206,8 @@ public:
     {
         flags().set(egt::Widget::Flag::no_layout);
         color(egt::Palette::ColorId::label_text, egt::Palette::white);
-        image_align(egt::AlignFlag::center | egt::AlignFlag::bottom);
-        text_align(egt::AlignFlag::center | egt::AlignFlag::top);
+        image_align(egt::AlignFlag::center_horizontal | egt::AlignFlag::bottom);
+        text_align(egt::AlignFlag::center_horizontal | egt::AlignFlag::top);
         font(egt::Font(20, egt::Font::Weight::bold));
     }
 
@@ -249,12 +249,12 @@ public:
         background(egt::Image("file:background.png"));
 
         auto logo = std::make_shared<egt::ImageLabel>(egt::Image("icon:microchip_logo_white.png;128"));
-        logo->align(egt::AlignFlag::center | egt::AlignFlag::bottom);
+        logo->align(egt::AlignFlag::center_horizontal | egt::AlignFlag::bottom);
         logo->margin(10);
         add(logo);
 
         auto egt_logo = std::make_shared<egt::ImageLabel>(egt::Image("icon:egt_logo_white.png;128"));
-        egt_logo->align(egt::AlignFlag::center | egt::AlignFlag::top);
+        egt_logo->align(egt::AlignFlag::center_horizontal | egt::AlignFlag::top);
         egt_logo->margin(10);
         add(egt_logo);
 
