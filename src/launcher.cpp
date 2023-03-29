@@ -12,7 +12,7 @@
 #include <cmath>
 #include <egt/detail/filesystem.h>
 #include <egt/ui>
-#include <experimental/filesystem>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -120,8 +120,6 @@ private:
     /// Callback to invoke when finished.
     SwipeCallback m_callback;
 };
-
-namespace filesys = std::experimental::filesystem;
 
 /*
  * Execute a command.
@@ -286,14 +284,14 @@ public:
 
         try
         {
-            if (filesys::exists(dir) && filesys::is_directory(dir))
+            if (std::filesystem::exists(dir) && std::filesystem::is_directory(dir))
             {
-                filesys::recursive_directory_iterator iter(dir);
-                filesys::recursive_directory_iterator end;
+                std::filesystem::recursive_directory_iterator iter(dir);
+                std::filesystem::recursive_directory_iterator end;
 
                 while (iter != end)
                 {
-                    if (!filesys::is_directory(iter->path().string()))
+                    if (!std::filesystem::is_directory(iter->path().string()))
                     {
                         std::regex rx(".*\\.xml$");
                         if (std::regex_match(iter->path().string(), rx))
