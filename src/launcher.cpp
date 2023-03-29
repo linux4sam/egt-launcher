@@ -192,10 +192,10 @@ public:
                  const std::string& name, const std::string& description,
                  // NOLINTNEXTLINE(modernize-pass-by-value)
                  const std::string& image, const std::string& exec, int x = 0, int y = 0)
-        : ImageLabel(egt::Image(image),
-                     name,
-                     egt::Rect(egt::Point(x, y), egt::Size()),
-                     egt::AlignFlag::center),
+        : egt::ImageLabel(egt::Image(image),
+                          name,
+                          egt::Rect(egt::Point(x, y), egt::Size()),
+                          egt::AlignFlag::center),
           m_window(window),
           m_num(itemnum++),
           m_name(name),
