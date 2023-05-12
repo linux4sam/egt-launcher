@@ -32,5 +32,5 @@ run()
     egt-launcher
 }
 
-# close stdout, stderr, stdin and double fork - it's magic
-((run $@ >&- 2>&- <&- &)&)
+# redirect stdout, stderr to /dev/null, close stdin and double fork - it's magic
+((run $@ > /dev/null 2>&1 <&- &)&)
