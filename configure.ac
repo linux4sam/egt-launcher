@@ -1,5 +1,5 @@
 AC_PREREQ([2.69])
-AC_INIT([egt-launcher],[1.3-rc1])
+AC_INIT([egt-launcher],[1.3-rc2])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_MACRO_DIR([m4])
