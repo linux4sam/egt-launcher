@@ -26,6 +26,99 @@
 #include <egt/detail/screen/kmsscreen.h>
 #endif
 
+struct IconLayout
+{
+    egt::Rect box;
+};
+
+struct PagerLayout
+{
+    egt::Rect box;
+    bool landscape;
+    egt::Font::Size font_size;
+    egt::StaticGrid::GridSize grid_size;
+    egt::DefaultDim image_width;
+    egt::DefaultDim image_height;
+    egt::DefaultDim grid_padding;
+    egt::DefaultDim grid_horizontal_space;
+    egt::DefaultDim grid_vertical_space;
+};
+
+struct IndicatorLayout
+{
+    egt::Rect box;
+};
+
+struct LinesLayout
+{
+    egt::Rect box;
+    egt::Font::Size font_size;
+};
+
+struct Layout
+{
+    egt::Size  screen_size;
+    const char* background;
+    struct IconLayout egt_logo;
+    struct IconLayout mchp_logo;
+    struct PagerLayout pager;
+    struct IndicatorLayout indicator;
+    struct LinesLayout lines;
+};
+
+static const struct Layout layouts[] =
+{
+    {
+        egt::Size(800, 480),
+        "background.png",
+        { egt::Rect(203, 352, 128, 128) },
+        { egt::Rect(469, 352, 128, 128) },
+        {
+            egt::Rect(0, 0, 800, 318),
+            true,
+            12.f,
+            egt::StaticGrid::GridSize(6, 2),
+            96, 96,
+            32, 32, 32,
+        },
+        {
+            egt::Rect(0, 300, 800, 32),
+        },
+        {
+            egt::Rect(0, 332, 800, 20),
+            18.f,
+        },
+    },
+
+    {
+        egt::Size(720, 1280),
+        "background.png",
+        { egt::Rect(176, 0, 128, 128) },
+        { egt::Rect(416, 0, 128, 128) },
+        {
+            egt::Rect(0, 128, 720, 942),
+            true,
+            18.f,
+            egt::StaticGrid::GridSize(3, 5),
+            128, 128,
+            32, 32, 32,
+        },
+        {
+            egt::Rect(0, 1070, 720, 32),
+        },
+        {
+            egt::Rect(0, 1134, 720, 146),
+            18.f,
+        },
+    },
+
+    /* sentinel */
+    {
+        egt::Size(),
+        nullptr,
+    },
+};
+
 /**
  * Basic swipe detector which will invoke a callback with up/down/left/right.
  */
@@ -121,6 +214,127 @@ private:
     SwipeCallback m_callback;
 };
 
+/**
+ *
+ */
+class Pager : public egt::ScrolledView
+{
+public:
+    Pager(const PagerLayout& layout,
+          const std::function<void(size_t)>& on_page_changed) :
+        ScrolledView(layout.box),
+        m_landscape(layout.landscape),
+        m_animator(std::chrono::milliseconds(1))
+    {
+        m_animator.on_change([this, on_page_changed](egt::DefaultDim value)
+        {
+            position(value);
+            if (!m_animator.running())
+            {
+                size_t page_index = std::abs(value) / page_length();
+                on_page_changed(page_index);
+            }
+        });
+
+        font(egt::Font(layout.font_size));
+    }
+#if 0
+    void handle(egt::Event& event) override
+    {
+        switch (event.id())
+        {
+        case egt::EventId::pointer_drag_start:
+            m_animator.stop();
+            break;
+        case egt::EventId::pointer_drag_stop:
+        {
+            if (!m_animator.running())
+            {
+                auto_scroll([] (float f) { return std::round(f); });
+            }
+            break;
+        }
+        default:
+            break;
+        }
+
+        ScrolledView::handle(event);
+    }
+#else
+    bool on_drag_start(egt::Event& event) override
+    {
+        m_animator.stop();
+        return ScrolledView::on_drag_start(event);
+    }
+
+    void on_drag_stop(egt::Event& event) override
+    {
+        ScrolledView::on_drag_stop(event);
+        if (!m_animator.running())
+        {
+            auto_scroll([] (float f) { return std::round(f); });
+        }
+    }
+#endif
+    void prev_page()
+    {
+        m_animator.stop();
+        auto_scroll([] (float f) { return std::ceil(f); });
+    }
+
+    void next_page()
+    {
+        m_animator.stop();
+        auto_scroll([] (float f) { return std::floor(f); });
+    }
+
+    void auto_scroll(const std::function<float(float)>& func)
+    {
+        const auto plen = page_length();
+        const auto start = position();
+        const auto end = plen * static_cast<egt::DefaultDim>(func(static_cast<float>(start) / static_cast<float>(plen)));
+        m_animator.duration(std::chrono::milliseconds(std::abs(end - start) / m_pixels_per_milliseconds));
+        m_animator.starting(start);
+        m_animator.ending(end);
+        m_animator.start();
+    }
+
+    void position(egt::DefaultDim value)
+    {
+        auto p = offset();
+        if (m_landscape)
+            p.x(value);
+        else
+            p.y(value);
+        offset(p);
+    }
+
+    EGT_NODISCARD egt::DefaultDim position() const { return to_dim(offset()); }
+
+    EGT_NODISCARD egt::DefaultDim page_length() const { return to_dim(content_area().size()); }
+
+    EGT_NODISCARD egt::DefaultDim to_dim(const egt::Point& p) const
+    {
+        if (m_landscape)
+            return p.x();
+
+        return p.y();
+    }
+
+    egt::DefaultDim to_dim(const egt::Size& s) const
+    {
+        if (m_landscape)
+            return s.width();
+
+        return s.height();
+    }
+
+private:
+    bool m_landscape{true};
+    egt::DefaultDim m_pixels_per_milliseconds{2};
+    egt::PropertyAnimator m_animator;
+};
+
 /*
  * Execute a command.
  */
@@ -146,94 +360,46 @@ static std::string exec(const char* cmd, bool wait = false)
 
 class LauncherWindow;
 
-/**
- * Normalize a value to a range.
- *
- * This assumes the value wraps when it goes below @b start or above @b end, and
- * returns a value within the allowed range.
- */
-template<class T>
-T normalize_to_range(const T value, const T start, const T end)
-{
-    const auto width = end - start;
-    const auto offset = value - start;
-
-    return (offset - ((offset / width) * width)) + start;
-}
-
-template<>
-double normalize_to_range<double>(const double value, const double start, const double end)
-{
-    const auto width = end - start;
-    const auto offset = value - start;
-
-    return (offset - (std::floor(offset / width) * width)) + start ;
-}
-
-template<>
-float normalize_to_range<float>(const float value, const float start, const float end)
-{
-    const auto width = end - start;
-    const auto offset = value - start;
-    return (offset - (std::floor(offset / width) * width)) + start ;
-}
-
 /*
  * A launcher menu item.
  */
 class LauncherItem : public egt::ImageLabel
 {
-    static int itemnum;
-
 public:
-
     LauncherItem(LauncherWindow& window,
                  // NOLINTNEXTLINE(modernize-pass-by-value)
                  const std::string& name, const std::string& description,
                  // NOLINTNEXTLINE(modernize-pass-by-value)
-                 const std::string& image, const std::string& exec, int x = 0, int y = 0)
-        : egt::ImageLabel(egt::Image(image),
+                 const std::string& image_path, const std::string& exec,
+                 egt::DefaultDim width, egt::DefaultDim height)
+        : egt::ImageLabel(egt::Image(image_path),
                           name,
-                          egt::Rect(egt::Point(x, y), egt::Size()),
-                          egt::AlignFlag::center),
+                          egt::AlignFlag::center_horizontal | egt::AlignFlag::bottom),
           m_window(window),
-          m_num(itemnum++),
-          m_name(name),
           m_description(description),
           m_exec(exec)
     {
-        flags().set(egt::Widget::Flag::no_layout);
+        autoresize(false);
+        m_image.resize({width, height});
+        align(egt::AlignFlag::expand);
+        image_align(egt::AlignFlag::top);
         color(egt::Palette::ColorId::label_text, egt::Palette::white);
-        image_align(egt::AlignFlag::center_horizontal | egt::AlignFlag::bottom);
-        text_align(egt::AlignFlag::center_horizontal | egt::AlignFlag::top);
-        font(egt::Font(20, egt::Font::Weight::bold));
+        fill_flags().clear();
+    }
+
+    void resize(const egt::Size& size) override
+    {
+        egt::ImageLabel::resize(size);
     }
 
     void handle(egt::Event& event) override;
 
-    inline int num() const { return m_num; }
-    inline std::string name() const { return m_name; }
-    inline double angle() const { return m_angle; }
-    inline void angle(double angle)
-    {
-        m_angle = normalize_to_range<double>(angle, 0, 360);
-#ifdef ANGLE_DEBUG
-        std::ostringstream ss;
-        ss << m_angle;
-        text(ss.str());
-#endif
-    }
-
 private:
     LauncherWindow& m_window;
-    int m_num{0};
-    double m_angle{0.};
-    std::string m_name;
     std::string m_description;
     std::string m_exec;
 };
 
-int LauncherItem::itemnum = 0;
 const auto OFFSET_FILENAME = "/tmp/egt-launcher-offset";
 
 /**
@@ -242,24 +408,101 @@ const auto OFFSET_FILENAME = "/tmp/egt-launcher-offset";
 class LauncherWindow : public egt::TopWindow
 {
 public:
-    LauncherWindow()
+    LauncherWindow(const Layout& layout) :
+        m_layout(layout),
+        m_indicator_group(true, true)
     {
-        background(egt::Image("file:background.png"));
+        background(egt::Image(std::string("file:") + m_layout.background));
 
-        auto logo = std::make_shared<egt::ImageLabel>(egt::Image("icon:microchip_logo_white.png;128"));
-        logo->align(egt::AlignFlag::center_horizontal | egt::AlignFlag::bottom);
-        logo->margin(10);
+        auto logo = std::make_shared<egt::ImageLabel>(egt::Image("icon:microchip_logo_white.png;128"), "", layout.mchp_logo.box);
         add(logo);
 
-        auto egt_logo = std::make_shared<egt::ImageLabel>(egt::Image("icon:egt_logo_white.png;128"));
-        egt_logo->align(egt::AlignFlag::center_horizontal | egt::AlignFlag::top);
-        egt_logo->margin(10);
+        auto egt_logo = std::make_shared<egt::ImageLabel>(egt::Image("icon:egt_logo_white.png;128"), "", layout.egt_logo.box);
         add(egt_logo);
 
-        m_swipe_animation.on_change([this](egt::PropertyAnimator::Value value)
-                                    {
-                                        move_boxes(value);
-                                    });
+        auto cb = [this] (size_t page_index) { on_page_changed(page_index); };
+        auto pager = std::make_shared<Pager>(m_layout.pager, cb);
+        m_pager = pager.get();
+        pager->fill_flags().clear();
+        pager->vpolicy(egt::ScrolledView::Policy::never);
+        pager->hpolicy(egt::ScrolledView::Policy::never);
+        add(pager);
+
+        auto orient = layout.pager.landscape ? egt::Orientation::horizontal : egt::Orientation::vertical;
+        auto page_sizer = std::make_shared<egt::BoxSizer>(orient);
+        m_page_sizer = page_sizer.get();
+        page_sizer->align(egt::AlignFlag::top | egt::AlignFlag::left);
+        pager->add(page_sizer);
+
+        auto indicator_sizer = std::make_shared<egt::HorizontalBoxSizer>();
+        m_indicator_sizer = indicator_sizer.get();
+        indicator_sizer->box(layout.indicator.box);
+        add(indicator_sizer);
+
+        (void)add_page();
+    }
+
+    egt::StaticGrid* add_page()
+    {
+        const auto s = m_indicator_sizer->height();
+
+        auto radio = std::make_shared<egt::RadioBox>();
+        radio->disable();
+        radio->show_label(false);
+        radio->autoresize(false);
+        radio->resize({s, s});
+        m_indicator_group.add(radio);
+        m_indicator_sizer->add(radio);
+
+        auto grid = std::make_shared<egt::StaticGrid>(m_layout.pager.grid_size);
+        grid->fill_flags().clear();
+        grid->padding(m_layout.pager.grid_padding);
+        grid->horizontal_space(m_layout.pager.grid_horizontal_space);
+        grid->vertical_space(m_layout.pager.grid_vertical_space);
+        grid->resize(m_pager->content_area().size());
+        m_page_sizer->add(grid);
+        return grid.get();
+    }
+
+    void add_item(const std::string& name,
+                  const std::string& description,
+                  const std::string& image_path,
+                  const std::string& cmd)
+    {
+        egt::StaticGrid* page = nullptr;
+        for (auto& child : m_page_sizer->children())
+        {
+            auto* p = static_cast<egt::StaticGrid*>(child.get());
+            if (p->count_children() < (p->n_col() * p->n_row()))
+            {
+                page = p;
+                break;
+            }
+        }
+
+        if (!page)
+            page = add_page();
+
+        const auto w = m_layout.pager.image_width;
+        const auto h = m_layout.pager.image_height;
+        auto entry = std::make_shared<LauncherItem>(*this, name, description, image_path, cmd, w, h);
+        page->add(entry);
+    }
+
+    void prev_page()
+    {
+        m_pager->prev_page();
+    }
+
+    void next_page()
+    {
+        m_pager->next_page();
+    }
+
+    void on_page_changed(size_t page_index)
+    {
+        auto& radio = *static_cast<egt::RadioBox*>(m_indicator_sizer->child_at(page_index).get());
+        radio.checked(true);
     }
 
     void launch(const std::string& exe) const
@@ -344,10 +587,7 @@ public:
 
         std::string cmd = node->first_node("arg")->value();
 
-        auto box = std::make_shared<LauncherItem>(*this, name, description, "file:" + image, cmd);
-        box->resize(egt::Size(box->width(), height() / 2));
-        m_boxes.push_back(box);
-        add(box);
+        add_item(name, description, "file:" + image, cmd);
     }
 
     int load(const std::string& dir)
@@ -382,56 +622,21 @@ public:
             }
         }
 
-        m_drag_angles.clear();
-
-        auto a =  width() * 1.25f / 2.f;
-        auto b =  height() / 2.f;
-
-        const auto min_perimeter = 225 * m_boxes.size();
-        while (true)
-        {
-            m_ellipse.radiusa(a);
-            m_ellipse.radiusb(b);
-
-            if (m_ellipse.perimeter() >= min_perimeter)
-                break;
-
-            a *= 1.01;
-            b *= 1.02;
-        }
-
-        m_ellipse.center(egt::PointType<float>(width() / 2.0,
-                                              height() / 2.0 - m_ellipse.radiusb()));
-
-        // evenly space each item at an angle
-        auto anglesep = 360. / m_boxes.size();
-        auto angleoffset = load_offset();
-        for (auto& box : m_boxes)
-        {
-            box->angle(angleoffset + (box->num() * anglesep));
-            m_drag_angles.push_back(box->angle());
-        }
-
-        move_boxes();
-
         return 0;
     }
 
-    static double load_offset()
+    void load_offset()
     {
-        double offset = 90.;
+        egt::DefaultDim offset = 0;
         std::ifstream in(OFFSET_FILENAME);
         if (in.is_open())
             in >> offset;
-        return offset;
+        m_pager->position(offset);
     }
 
     void save_offset() const
     {
-        if (m_boxes.empty())
-            return;
-
-        auto offset = m_boxes.front()->angle();
+        auto offset = m_pager->position();
         std::ofstream out(OFFSET_FILENAME, std::ios::trunc);
         if (out.is_open())
             out << offset;
@@ -448,11 +653,11 @@ public:
 
         if (!m_lines.empty())
         {
-            auto vsizer = std::make_shared<egt::Frame>(egt::Size(width(), height() * .3f));
-            vsizer->move(egt::Point(0, height() - height() * .3f));
+            auto vsizer = std::make_shared<egt::Frame>(m_layout.lines.box);
             add(vsizer);
 
             auto label = std::make_shared<egt::Label>();
+            label->font(egt::Font(m_layout.lines.font_size));
             label->color(egt::Palette::ColorId::label_text, egt::Palette::white);
             vsizer->add(egt::expand(label));
 
@@ -497,91 +702,15 @@ public:
         }
     }
 
-    void handle(egt::Event& event) override
-    {
-        TopWindow::handle(event);
-
-        switch (event.id())
-        {
-        case egt::EventId::pointer_drag_start:
-            m_swipe_animation.stop();
-            reset_angles();
-            break;
-        case egt::EventId::pointer_drag:
-            {
-                const auto dist = event.pointer().point - event.pointer().drag_start;
-                move_boxes(dist.x());
-                event.stop();
-                break;
-            }
-        default:
-            break;
-        }
-    }
-
-    void move_boxes(int diff = 0)
-    {
-        if (m_boxes.empty() || m_boxes.size() != m_drag_angles.size())
-            return;
-
-        auto angles = m_drag_angles.begin();
-        for (auto& box : m_boxes)
-        {
-            const auto ANGLE_SPEED_FACTOR = width() * .0002;
-
-            // adjust the box angle
-            auto angle = *angles;
-            angle -= (diff * ANGLE_SPEED_FACTOR);
-            box->angle(angle);
-
-            // x,y on the ellipse at the specified angle
-            auto point = m_ellipse.point_on_circumference(egt::detail::to_radians<double>(0,angle));
-
-            box->move_to_center(egt::Point(point.x(), point.y()));
-
-            ++angles;
-        }
-    }
-
-    void move_boxes_swipe(bool right)
-    {
-        // if animating, ignore event and wait for it to finish
-        if (m_swipe_animation.running())
-            return;
-
-        reset_angles();
-
-        if (right)
-        {
-            m_swipe_animation.starting(0);
-            m_swipe_animation.ending(-200);
-        }
-        else
-        {
-            m_swipe_animation.starting(0);
-            m_swipe_animation.ending(200);
-        }
-
-        m_swipe_animation.start();
-    }
-
 private:
 
-    void reset_angles()
-    {
-        m_drag_angles.clear();
-        for (auto& box : m_boxes)
-            m_drag_angles.push_back(box->angle());
-    }
-
-    std::vector<std::shared_ptr<LauncherItem>> m_boxes;
-    std::vector<double> m_drag_angles;
-    egt::EllipseType<float> m_ellipse{};
+    const Layout& m_layout;
+    egt::ButtonGroup m_indicator_group;
+    Pager* m_pager{nullptr};
+    egt::BoxSizer* m_page_sizer{nullptr};
+    egt::BoxSizer* m_indicator_sizer{nullptr};
     std::vector<std::string> m_lines;
-    egt::PropertyAnimator m_animation;
     egt::AnimationSequence m_sequence{true};
-    egt::PropertyAnimator m_swipe_animation{std::chrono::seconds(1),
-            egt::easing_circular_easeout};
 };
 
 void LauncherItem::handle(egt::Event& event)
@@ -609,10 +738,21 @@ int main(int argc, char** argv)
     egt::Application::instance().screen()->brightness(
         egt::Application::instance().screen()->max_brightness());
 
+    // select the application layout
+    const auto screen_size = app.screen()->size();
+    const auto* layout = &layouts[0];
+    for (layout = layouts; !layout->screen_size.empty(); ++layout)
+    {
+        if (layout->screen_size == screen_size)
+            break;
+    }
+    if (layout->screen_size.empty())
+        layout = &layouts[0];
+
     egt::add_search_path(DATADIR "/egt/launcher/");
     egt::add_search_path("images/");
 
-    LauncherWindow win;
+    LauncherWindow win(*layout);
 
     // load some default directories if nothing is specified
     if (argc <= 1)
@@ -625,6 +765,8 @@ int main(int argc, char** argv)
             win.load(argv[i]);
     }
 
+    win.load_offset();
+
     {
         std::ifstream in(egt::resolve_file_path("taglines.txt"), std::ios::binary);
         if (in.is_open())
@@ -634,9 +776,9 @@ int main(int argc, char** argv)
     SwipeDetect swipe([&win](const std::string & direction)
     {
         if (direction == "right")
-            win.move_boxes_swipe(true);
+            win.next_page();
         else if (direction == "left")
-            win.move_boxes_swipe(false);
+            win.prev_page();
     });
 
     // feed global events to swipe detector
