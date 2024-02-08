@@ -15,7 +15,8 @@ egt_launcher_SOURCES = src/launcher.cpp
 egt_launcher_CXXFLAGS = $(CUSTOM_CXXFLAGS) $(AM_CXXFLAGS)
 egt_launcher_LDADD = $(CUSTOM_LDADD)
 egt_launcherdir = $(prefix)/share/egt/launcher
-dist_egt_launcher_DATA = $(top_srcdir)/images/background.png \
+dist_egt_launcher_DATA = $(top_srcdir)/images/background_720x1280.png \
+	$(top_srcdir)/images/background_800x480.png \
 	$(top_srcdir)/taglines.txt
 egt_launcher_LDFLAGS = $(AM_LDFLAGS)
 egt_launcher_SCRIPTS = launch.sh
