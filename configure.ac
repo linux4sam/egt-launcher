@@ -1,5 +1,5 @@
 AC_PREREQ([2.69])
-AC_INIT([egt-launcher],[1.3])
+AC_INIT([egt-launcher],[1.4-rc1])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_MACRO_DIR([m4])
@@ -85,7 +85,7 @@ AC_CACHE_CHECK([for supported warning flags], egt_cv_warn_cflags, [
 WARN_CFLAGS="$egt_cv_warn_cflags"
 AC_SUBST(WARN_CFLAGS)
 
-PKG_CHECK_MODULES(LIBEGT, [libegt >= 1.7], [], [
+PKG_CHECK_MODULES(LIBEGT, [libegt >= 1.9-rc1], [], [
    AC_MSG_ERROR(libegt not found.  This is required.)
 ])
 
