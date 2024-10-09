@@ -30,7 +30,7 @@ struct Layout
 {
     bool landscape;
     const char* background;
-    egt::Serializer::Properties egt_logo;
+    egt::Serializer::Properties mgs_logo;
     egt::Serializer::Properties mchp_logo;
     egt::Serializer::Properties pager;
     egt::Serializer::Properties grid;
@@ -43,7 +43,7 @@ static const Layout landscape_layout =
 {
     true,
     "background_800x480.png",
-    /* egt_logo */
+    /* mgs_logo */
     {
         { "ratio:vertical", "10", {} },
         { "ratio:horizontal", "50", {} },
@@ -93,7 +93,7 @@ static const Layout portrait_layout =
 {
     false,
     "background_720x1280.png",
-    /* egt_logo */
+    /* mgs_logo */
     {
         { "ratio:vertical", "4", {} },
         { "ratio:horizontal", "50", {} },
@@ -534,12 +534,12 @@ public:
         auto logo = std::make_shared<egt::ImageLabel>(mchp_logo_props);
         add(logo);
 
-        auto egt_logo_props = m_layout.egt_logo;
-        add_prop(egt_logo_props, "image", "icon:egt_logo_white.png;128");
-        add_prop(egt_logo_props, "showlabel", "false");
-        add_prop(egt_logo_props, "image_align", "center|expand");
-        auto egt_logo = std::make_shared<egt::ImageLabel>(egt_logo_props);
-        add(egt_logo);
+        auto mgs_logo_props = m_layout.mgs_logo;
+        add_prop(mgs_logo_props, "image", "icon:mgs_logo_white.png;128");
+        add_prop(mgs_logo_props, "showlabel", "false");
+        add_prop(mgs_logo_props, "image_align", "center|expand");
+        auto mgs_logo = std::make_shared<egt::ImageLabel>(mgs_logo_props);
+        add(mgs_logo);
 
         auto indicator_props = m_layout.indicator;
         auto indicator_sizer = std::make_shared<egt::BoxSizer>(indicator_props);
