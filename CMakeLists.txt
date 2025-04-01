@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.23)
 
 project(
     egt-launcher
-    VERSION 1.5
+    VERSION 1.5.1
     DESCRIPTION "A graphical launcher built upon the EGT library."
     LANGUAGES CXX
 )
